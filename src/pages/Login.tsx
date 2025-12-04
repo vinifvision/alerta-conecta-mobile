@@ -1,3 +1,5 @@
+// pages/Login.tsx
+
 import React, { useState } from "react";
 import {
   View,
@@ -6,11 +8,34 @@ import {
   Image,
   TouchableOpacity,
   TextInput,
+  ActivityIndicator,
+  Alert,
 } from "react-native";
+import { useAuth } from "../contexts/AuthContext"; // Importe o hook
 
-export default function LoginScreen({ navigation }) {
+export default function LoginScreen({ navigation }: any) {
+  // navigation não é mais tão necessário aqui pois o AuthContext redireciona, mas pode manter
   const [usuario, setUsuario] = useState("");
   const [senha, setSenha] = useState("");
+  const { login } = useAuth(); // Pega a função do contexto
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleLogin = async () => {
+    if (!usuario || !senha) {
+      Alert.alert("Erro", "Por favor, preencha todos os campos.");
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      await login(usuario, senha);
+      // Não precisa navegar manualmente, o App.tsx vai detectar a mudança de estado
+    } catch (error: any) {
+      Alert.alert("Erro no Login", error.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <View style={styles.container}>
