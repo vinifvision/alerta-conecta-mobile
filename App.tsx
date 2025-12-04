@@ -1,24 +1,53 @@
-// App.tsx
 import React from "react";
 import { ActivityIndicator, View } from "react-native";
 import { NavigationContainer } from "@react-navigation/native";
 import { createStackNavigator } from "@react-navigation/stack";
+import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+import { Ionicons } from "@expo/vector-icons"; // Ícones do Expo
 
-// 1. Importamos o AuthProvider e o hook useAuth
 import { AuthProvider, useAuth } from "./src/contexts/AuthContext";
 
-// 2. Importamos as telas
+// Telas
 import WelcomeScreen from "./src/pages/Welcome";
 import LoginScreen from "./src/pages/Login";
-import HomeScreen from "./src/pages/Home"; // <--- Vamos criar essa tela no Passo 2
+import HomeScreen from "./src/pages/Home";
+import ProfileScreen from "./src/pages/Profile";
 
 const Stack = createStackNavigator();
+const Tab = createBottomTabNavigator();
 
-// 3. Criamos um componente que gerencia as rotas
+// --- 1. Navegação Interna (Abas) ---
+function AppTabs() {
+  return (
+    <Tab.Navigator
+      id="AppTabs"
+      screenOptions={({ route }) => ({
+        headerShown: false,
+        tabBarActiveTintColor: "#1650A7",
+        tabBarInactiveTintColor: "gray",
+        tabBarIcon: ({ focused, color, size }) => {
+          let iconName: any;
+
+          if (route.name === "Ocorrências") {
+            iconName = focused ? "list" : "list-outline";
+          } else if (route.name === "Perfil") {
+            iconName = focused ? "person" : "person-outline";
+          }
+
+          return <Ionicons name={iconName} size={size} color={color} />;
+        },
+      })}
+    >
+      <Tab.Screen name="Ocorrências" component={HomeScreen} />
+      <Tab.Screen name="Perfil" component={ProfileScreen} />
+    </Tab.Navigator>
+  );
+}
+
+// --- 2. Navegação Principal (Stack) ---
 function Routes() {
   const { signed, loading } = useAuth();
 
-  // Enquanto carrega os dados do celular (AsyncStorage), mostra um spinner
   if (loading) {
     return (
       <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
@@ -28,12 +57,12 @@ function Routes() {
   }
 
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
+    <Stack.Navigator id="RootStack" screenOptions={{ headerShown: false }}>
       {signed ? (
-        // --- Se estiver logado (signed = true), mostra SÓ a Home ---
-        <Stack.Screen name="Home" component={HomeScreen} />
+        // Se logado, vai para as Abas (Home + Perfil)
+        <Stack.Screen name="Main" component={AppTabs} />
       ) : (
-        // --- Se NÃO estiver logado, mostra Welcome e Login ---
+        // Se não logado, vai para fluxo de Auth
         <>
           <Stack.Screen name="Welcome" component={WelcomeScreen} />
           <Stack.Screen name="Login" component={LoginScreen} />
@@ -43,7 +72,6 @@ function Routes() {
   );
 }
 
-// 4. O App principal apenas fornece o Contexto e a Navegação
 export default function App() {
   return (
     <NavigationContainer>
