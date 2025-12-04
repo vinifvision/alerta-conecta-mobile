@@ -1,27 +1,21 @@
-// pages/Home.tsx
-
 import React from "react";
 import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
-import { useAuth } from "../contexts/AuthContext";
+import { useAuth } from "../contexts/AuthContext"; // Importe para poder sair (logout)
 
 export default function HomeScreen() {
   const { user, logout } = useAuth();
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Dashboard Mobile</Text>
-      <Text style={styles.subtitle}>Bem-vindo, {user?.name}</Text>
+      <Text style={styles.title}>Olá, {user?.name || "Usuário"}</Text>
+      <Text style={styles.subtitle}>Bem-vindo ao Alerta Conecta!</Text>
 
       <View style={styles.card}>
-        <Text style={styles.label}>Cargo:</Text>
-        <Text style={styles.info}>{user?.role}</Text>
-
-        <Text style={styles.label}>Status:</Text>
-        <Text style={styles.info}>Conectado (Modo Offline)</Text>
+        <Text style={styles.info}>Você está logado no modo MOCK.</Text>
       </View>
 
-      <TouchableOpacity style={styles.logoutButton} onPress={logout}>
-        <Text style={styles.logoutText}>Sair</Text>
+      <TouchableOpacity style={styles.button} onPress={logout}>
+        <Text style={styles.buttonText}>Sair do App</Text>
       </TouchableOpacity>
     </View>
   );
@@ -33,51 +27,30 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     padding: 20,
-    backgroundColor: "#F5F5F5",
+    backgroundColor: "#f5f5f5",
   },
   title: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: "bold",
     color: "#003366",
-    marginBottom: 10,
+    marginBottom: 5,
   },
-  subtitle: {
-    fontSize: 18,
-    color: "#555",
-    marginBottom: 40,
-  },
+  subtitle: { fontSize: 18, color: "#666", marginBottom: 30 },
   card: {
     backgroundColor: "#fff",
-    width: "100%",
     padding: 20,
     borderRadius: 10,
-    marginBottom: 30,
-    elevation: 2, // Sombra no Android
-    shadowColor: "#000", // Sombra no iOS
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-  },
-  label: {
-    fontSize: 14,
-    color: "#999",
-    marginTop: 10,
-  },
-  info: {
-    fontSize: 18,
-    fontWeight: "500",
-    color: "#333",
-  },
-  logoutButton: {
-    backgroundColor: "#D31C30",
-    paddingVertical: 15,
     width: "100%",
-    borderRadius: 50,
+    marginBottom: 20,
+    elevation: 2,
+  },
+  info: { fontSize: 16, textAlign: "center", color: "#333" },
+  button: {
+    backgroundColor: "#D31C30",
+    padding: 15,
+    borderRadius: 30,
+    width: "100%",
     alignItems: "center",
   },
-  logoutText: {
-    color: "#fff",
-    fontSize: 18,
-    fontWeight: "bold",
-  },
+  buttonText: { color: "#fff", fontSize: 16, fontWeight: "bold" },
 });

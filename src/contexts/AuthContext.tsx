@@ -39,6 +39,7 @@ const MOCK_USER: User = {
 interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
+  signed: boolean;
   loading: boolean;
   login: (cpf: string, pass: string) => Promise<void>;
   logout: () => Promise<void>;
@@ -124,7 +125,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   return (
     <AuthContext.Provider
-      value={{ user, isAuthenticated: !!user, loading, login, logout }}
+      value={{
+        user,
+        isAuthenticated: !!user,
+        signed: !!user,
+        loading,
+        login,
+        logout,
+      }}
     >
       {children}
     </AuthContext.Provider>

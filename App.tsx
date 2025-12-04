@@ -1,23 +1,24 @@
 // App.tsx
-
 import React from "react";
 import { ActivityIndicator, View } from "react-native";
 import { NavigationContainer } from "@react-navigation/native";
 import { createStackNavigator } from "@react-navigation/stack";
 
-// Importa o contexto que acabamos de criar
+// 1. Importamos o AuthProvider e o hook useAuth
 import { AuthProvider, useAuth } from "./src/contexts/AuthContext";
 
-// Telas
+// 2. Importamos as telas
 import WelcomeScreen from "./src/pages/Welcome";
 import LoginScreen from "./src/pages/Login";
-import HomeScreen from "./src/pages/Home"; // <--- Crie este arquivo (código abaixo)
+import HomeScreen from "./src/pages/Home"; // <--- Vamos criar essa tela no Passo 2
 
 const Stack = createStackNavigator();
 
-const Routes = () => {
-  const { isAuthenticated, loading } = useAuth();
+// 3. Criamos um componente que gerencia as rotas
+function Routes() {
+  const { signed, loading } = useAuth();
 
+  // Enquanto carrega os dados do celular (AsyncStorage), mostra um spinner
   if (loading) {
     return (
       <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
@@ -27,12 +28,12 @@ const Routes = () => {
   }
 
   return (
-    <Stack.Navigator id="root" screenOptions={{ headerShown: false }}>
-      {isAuthenticated ? (
-        // Rota Privada (Você entra aqui após o login mock)
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      {signed ? (
+        // --- Se estiver logado (signed = true), mostra SÓ a Home ---
         <Stack.Screen name="Home" component={HomeScreen} />
       ) : (
-        // Rotas Públicas
+        // --- Se NÃO estiver logado, mostra Welcome e Login ---
         <>
           <Stack.Screen name="Welcome" component={WelcomeScreen} />
           <Stack.Screen name="Login" component={LoginScreen} />
@@ -40,8 +41,9 @@ const Routes = () => {
       )}
     </Stack.Navigator>
   );
-};
+}
 
+// 4. O App principal apenas fornece o Contexto e a Navegação
 export default function App() {
   return (
     <NavigationContainer>
