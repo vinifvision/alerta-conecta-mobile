@@ -1,14 +1,15 @@
-import React from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
+import React from "react";
+import { View, Text, StyleSheet, Image, TouchableOpacity } from "react-native";
 
-export default function WelcomeScreen({ navigation }) { // <-- Adicione navigation aqui
+export default function WelcomeScreen({ navigation }) {
+  // <-- Adicione navigation aqui
   return (
     <View style={styles.container}>
       {/* Logo */}
       <View style={styles.logoContainer}>
         <Image
-            source={require('../assets/alertaconecta-logo.png')}
-            style={styles.logo}
+          source={require("../assets/alertaconecta-logo.png")}
+          style={styles.logo}
         />
       </View>
 
@@ -21,7 +22,7 @@ export default function WelcomeScreen({ navigation }) { // <-- Adicione navigati
       {/* Botão de login */}
       <TouchableOpacity
         style={styles.loginButton}
-        onPress={() => navigation.navigate('Login')} // <-- Adicione esta linha
+        onPress={() => navigation.navigate("Login")} // <-- Adicione esta linha
       >
         <Text style={styles.loginButtonText}>Fazer login</Text>
       </TouchableOpacity>
@@ -32,12 +33,12 @@ export default function WelcomeScreen({ navigation }) { // <-- Adicione navigati
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "#fff",
+    justifyContent: "center",
+    alignItems: "center",
   },
   logoContainer: {
-    alignItems: 'center',
+    alignItems: "center",
     marginBottom: 70,
   },
   logo: {
@@ -45,32 +46,32 @@ const styles = StyleSheet.create({
     height: 171,
     marginBottom: 10,
   },
-  
+
   welcomeContainer: {
-    alignItems: 'flex-start',
-    width: '80%',
+    alignItems: "flex-start",
+    width: "80%",
     marginBottom: 30,
   },
   welcomeTitle: {
     fontSize: 24,
-    fontWeight: 'bold',
-    color: '#003366',
+    fontWeight: "bold",
+    color: "#003366",
     marginBottom: 5,
   },
   welcomeSubtitle: {
     fontSize: 20,
-    color: '#222',
+    color: "#222",
   },
   loginButton: {
-    backgroundColor: '#D31C30',
+    backgroundColor: "#D31C30",
     paddingVertical: 15,
     paddingHorizontal: 110,
     borderRadius: 50,
     marginTop: 10,
   },
   loginButtonText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 18,
-    fontWeight: 'medium',
+    fontWeight: "medium",
   },
 });
