@@ -1,4 +1,4 @@
-// src/screens/Home.tsx (Com Pesquisa, Filtros e Seções)
+// src/screens/Home.tsx
 
 import React, { useState, useEffect, useMemo } from "react";
 import {
@@ -9,215 +9,283 @@ import {
   TouchableOpacity,
   StatusBar,
   TextInput,
-  Modal,
   ActivityIndicator,
+  Modal,
   ScrollView,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
+import { Feather } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
-import { Ionicons, Feather } from "@expo/vector-icons"; // Ícones
-import { useAuth } from "../contexts/AuthContext";
+import { useAuth } from "../contexts/AuthContext"; // Importe o contexto
+import FilterModal, { FilterState } from "../components/FilterModal"; // Importe o modal
 
 // --- Tipos ---
 type Occurrence = {
   id: number;
-  titule: string | null;
-  type: number;
-  nome_tipo: string; // Vem do JOIN ou placeholder
+  titule: string;
+  type: number; // ID do tipo
+  nome_tipo: string; // Nome do tipo (Ex: Incêndio)
   date: string;
   status: "Em_andamento" | "Encerrada" | "Cancelada";
   priority: "Baixa" | "Media" | "Alta" | "Critica";
+  // Simulação de região (já que a API ainda não manda)
+  region?: string;
 };
 
-// Tipo para as Seções da Lista
-type OccurrenceSection = {
+type SectionData = {
   title: string;
   data: Occurrence[];
-  count: number; // Para mostrar (3) ao lado do título
+  count: number;
 };
 
+// URL da API
 const API_URL =
   "https://alerta-conecta-backend-production.up.railway.app/database";
 const GET_OCCURRENCES_URL = `${API_URL}/occurrence/getall`;
 
-export default function HomeScreen() {
-  const navigation = useNavigation();
-  const { user, logout } = useAuth(); // Token já está salvo no AuthContext? Se não, pegamos do Storage
+// Fallback para nomes de tipos
+const OCCURRENCE_TYPES: Record<number, string> = {
+  1: "Incêndio",
+  2: "Resgate",
+  3: "APH",
+  4: "Prevenção",
+  5: "Ambiental",
+  6: "Administrativa",
+  7: "Desastre",
+};
 
-  // --- Estados ---
+// --- DADOS MOCK (ADICIONADO) ---
+const MOCK_DATA: Occurrence[] = [
+  {
+    id: 101,
+    titule: "Incêndio em Edificação Residencial",
+    type: 1,
+    nome_tipo: "Incêndio",
+    date: "2025-10-25T14:30:00",
+    status: "Em_andamento",
+    priority: "Alta",
+    region: "RMR",
+  },
+  {
+    id: 102,
+    titule: "Resgate Veicular na BR-101",
+    type: 2,
+    nome_tipo: "Resgate",
+    date: "2025-10-25T16:00:00",
+    status: "Encerrada",
+    priority: "Media",
+    region: "Zona da Mata",
+  },
+  {
+    id: 103,
+    titule: "Vazamento de Gás GLP",
+    type: 5,
+    nome_tipo: "Ocorrência Ambiental",
+    date: "2025-10-24T09:15:00",
+    status: "Cancelada",
+    priority: "Baixa",
+    region: "Agreste",
+  },
+  {
+    id: 104,
+    titule: "Deslizamento de Barreira",
+    type: 7,
+    nome_tipo: "Desastre Natural",
+    date: "2025-10-24T18:45:00",
+    status: "Em_andamento",
+    priority: "Critica",
+    region: "RMR",
+  },
+  {
+    id: 105,
+    titule: "Captura de Animal Silvestre",
+    type: 5,
+    nome_tipo: "Ocorrência Ambiental",
+    date: "2025-10-23T10:00:00",
+    status: "Encerrada",
+    priority: "Baixa",
+    region: "Sertão",
+  },
+  {
+    id: 106,
+    titule: "Atendimento Pré-Hospitalar (Queda)",
+    type: 3,
+    nome_tipo: "APH",
+    date: "2025-10-23T22:10:00",
+    status: "Em_andamento",
+    priority: "Media",
+    region: "RMR",
+  },
+];
+
+export default function HomeScreen() {
+  const navigation = useNavigation(); // Adicionado para navegação funcionar se precisar
+  const { user, logout } = useAuth();
+
+  // Dados
   const [allOccurrences, setAllOccurrences] = useState<Occurrence[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  // Estados de Filtro e Busca
+  // Filtros e Busca
   const [searchText, setSearchText] = useState("");
-  const [filterModalVisible, setFilterModalVisible] = useState(false);
-  const [selectedPriority, setSelectedPriority] = useState<string | null>(null);
+  const [isFilterVisible, setIsFilterVisible] = useState(false);
+  const [filters, setFilters] = useState<FilterState>({
+    startDate: "",
+    endDate: "",
+    status: null,
+    region: null,
+    type: null,
+  });
 
-  // --- Busca de Dados (API Real) ---
+  // --- Fetch de Dados (USANDO MOCK) ---
   const fetchOccurrences = async () => {
-    // Nota: Em um app real, use o token do contexto. Aqui simulamos o fetch.
-    // Se o seu AuthContext expõe o token, use-o. Caso contrário, pegue do AsyncStorage.
+    setRefreshing(true);
+
+    // Simula um delay de rede e carrega os dados Mock
+    setTimeout(() => {
+      setAllOccurrences(MOCK_DATA);
+      setLoading(false);
+      setRefreshing(false);
+    }, 1000);
+
+    /* CÓDIGO DA API ORIGINAL (Comentado para usar o Mock)
     try {
-      // Para simplificar neste exemplo, assumimos que o fetch funciona ou usamos mock se falhar
-      // No seu caso, descomente a linha do fetch real abaixo:
-
       const response = await fetch(GET_OCCURRENCES_URL);
-      // (Adicione headers: { Authorization: `Bearer ${token}` } se sua API exigir)
-
       if (response.ok) {
         const data = await response.json();
-        // Mapeia os dados para garantir que os campos existam
-        const formattedData = data.map((o: any) => ({
-          ...o,
+
+        // Mapeia os dados para garantir formato correto
+        const mappedData = data.map((o: any) => ({
+          id: o.id,
           titule: o.titule || `Ocorrência #${o.id}`,
-          nome_tipo: o.nome_tipo || `Tipo ${o.type}`,
-          // Normaliza o status se vier diferente (ex: "Em andamento" vs "Em_andamento")
-          status: o.status === "Em andamento" ? "Em_andamento" : o.status,
+          type: o.type,
+          nome_tipo:
+            o.nome_tipo || OCCURRENCE_TYPES[o.type] || `Tipo ${o.type}`,
+          date: o.date,
+          status: o.status === "Em andamento" ? "Em_andamento" : o.status, // Corrige possível erro de digitação da API
+          priority: o.priority,
+          // Simula Região aleatória para teste (pois a API não manda ainda)
+          region: ["RMR", "Zona da Mata", "Agreste", "Sertão"][o.id % 4],
         }));
-        setAllOccurrences(formattedData);
-      } else {
-        console.log("Erro ao buscar dados (API). Usando dados vazios.");
+
+        setAllOccurrences(mappedData);
       }
     } catch (error) {
-      console.error("Erro de conexão:", error);
+      console.error("Erro ao buscar:", error);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
+    */
   };
 
   useEffect(() => {
     fetchOccurrences();
   }, []);
 
-  // --- Lógica de Filtragem e Agrupamento ---
+  // --- Lógica de Filtragem (Memoizada) ---
   const sections = useMemo(() => {
-    // 1. Filtra a lista bruta
+    // Parse datas
+    const parseDate = (s: string) =>
+      s.length === 10 ? new Date(s.split("/").reverse().join("-")) : null;
+    const start = parseDate(filters.startDate);
+    const end = parseDate(filters.endDate);
+    if (end) end.setHours(23, 59, 59);
+
+    // 1. Aplica Filtros
     const filtered = allOccurrences.filter((item) => {
-      // Filtro por ID (Busca)
-      const matchesSearch = searchText
+      // Busca por ID ou Título
+      const matchSearch = searchText
         ? String(item.id).includes(searchText) ||
-          item.titule?.toLowerCase().includes(searchText.toLowerCase())
+          item.titule.toLowerCase().includes(searchText.toLowerCase())
         : true;
 
-      // Filtro por Prioridade
-      const matchesPriority = selectedPriority
-        ? item.priority === selectedPriority
-        : true;
+      const itemDate = new Date(item.date);
+      const matchDate =
+        (!start || itemDate >= start) && (!end || itemDate <= end);
 
-      return matchesSearch && matchesPriority;
+      const matchStatus = !filters.status || item.status === filters.status;
+      const matchRegion = !filters.region || item.region === filters.region;
+      const matchType = !filters.type || item.type === filters.type;
+
+      return (
+        matchSearch && matchDate && matchStatus && matchRegion && matchType
+      );
     });
 
-    // 2. Agrupa por Status
-    const emAndamento = filtered.filter((o) => o.status === "Em_andamento");
-    const encerradas = filtered.filter((o) => o.status === "Encerrada");
-    const canceladas = filtered.filter((o) => o.status === "Cancelada");
+    // 2. Agrupa por Status (Em Andamento, Encerrada, etc)
+    const result: SectionData[] = [];
 
-    // 3. Monta as seções (se tiver dados)
-    const result: OccurrenceSection[] = [];
+    // Função auxiliar para criar grupo
+    const addGroup = (title: string, statusValue: string) => {
+      const groupData = filtered.filter((o) => o.status === statusValue);
+      if (groupData.length > 0) {
+        result.push({ title, data: groupData, count: groupData.length });
+      }
+    };
 
-    if (emAndamento.length > 0)
-      result.push({
-        title: "Em Andamento",
-        data: emAndamento,
-        count: emAndamento.length,
-      });
-    if (encerradas.length > 0)
-      result.push({
-        title: "Encerradas",
-        data: encerradas,
-        count: encerradas.length,
-      });
-    if (canceladas.length > 0)
-      result.push({
-        title: "Canceladas",
-        data: canceladas,
-        count: canceladas.length,
-      });
+    // Ordem das seções
+    addGroup("Em Andamento", "Em_andamento");
+    addGroup("Encerradas", "Encerrada");
+    addGroup("Canceladas", "Cancelada");
 
     return result;
-  }, [allOccurrences, searchText, selectedPriority]);
-
-  // --- Helpers de UI ---
-  const formatDate = (dateString: string) => {
-    try {
-      const date = new Date(dateString);
-      return `${date.toLocaleDateString("pt-BR")} ${date.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`;
-    } catch {
-      return dateString;
-    }
-  };
-
-  const getStatusColor = (status: string) => {
-    if (status === "Em_andamento" || status === "Em andamento")
-      return "#FF8C00"; // Laranja
-    if (status === "Encerrada") return "#4CAF50"; // Verde
-    return "#9E9E9E"; // Cinza
-  };
+  }, [allOccurrences, searchText, filters]);
 
   // --- Renderização ---
-  const renderItem = ({ item }: { item: Occurrence }) => (
-    <TouchableOpacity
-      style={styles.card}
-      onPress={() => console.log(`Navegar para Detalhes ID: ${item.id}`)}
-      // onPress={() => navigation.navigate('OccurrenceDetails', { id: item.id })} // Futuro
-    >
-      <View style={styles.cardHeader}>
-        <View
-          style={[
-            styles.statusIndicator,
-            { backgroundColor: getStatusColor(item.status) },
-          ]}
-        />
-        <View style={{ flex: 1 }}>
-          <Text style={styles.cardTitle} numberOfLines={1}>
-            {item.titule}
-          </Text>
-          <Text style={styles.cardSubtitle}>{item.nome_tipo}</Text>
-        </View>
-        {/* Badge Prioridade */}
-        <View
-          style={[
-            styles.badge,
-            {
-              backgroundColor:
-                item.priority === "Alta" || item.priority === "Critica"
-                  ? "#FFEBEE"
-                  : "#E3F2FD",
-            },
-          ]}
-        >
-          <Text
+  const renderItem = ({ item }: { item: Occurrence }) => {
+    const dateObj = new Date(item.date);
+    const formattedDate = `${dateObj.toLocaleDateString("pt-BR")} ${dateObj.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`;
+
+    return (
+      <TouchableOpacity
+        style={styles.card}
+        onPress={() => console.log("Detalhes", item.id)}
+      >
+        <View style={styles.cardHeader}>
+          <View
             style={[
-              styles.badgeText,
-              {
-                color:
-                  item.priority === "Alta" || item.priority === "Critica"
-                    ? "#D32F2F"
-                    : "#1976D2",
-              },
+              styles.statusIndicator,
+              { backgroundColor: getStatusColor(item.status) },
+            ]}
+          />
+          <View style={{ flex: 1 }}>
+            <Text style={styles.cardTitle}>{item.titule}</Text>
+            <Text style={styles.cardSubtitle}>
+              {item.nome_tipo} • {item.region}
+            </Text>
+          </View>
+          {/* Badge de Prioridade */}
+          <View
+            style={[
+              styles.badge,
+              { backgroundColor: getPriorityBg(item.priority) },
             ]}
           >
-            {item.priority}
-          </Text>
+            <Text
+              style={[
+                styles.badgeText,
+                { color: getPriorityColor(item.priority) },
+              ]}
+            >
+              {item.priority}
+            </Text>
+          </View>
         </View>
-      </View>
-
-      <View style={styles.cardFooter}>
-        <View style={styles.footerInfo}>
-          <Feather name="calendar" size={12} color="#999" />
-          <Text style={styles.dateText}>{formatDate(item.date)}</Text>
+        <View style={styles.cardFooter}>
+          <View style={styles.footerInfo}>
+            <Feather name="calendar" size={12} color="#999" />
+            <Text style={styles.dateText}>{formattedDate}</Text>
+          </View>
+          <Text style={styles.idText}>#{item.id}</Text>
         </View>
-        <Text style={styles.idText}>#{item.id}</Text>
-      </View>
-    </TouchableOpacity>
-  );
+      </TouchableOpacity>
+    );
+  };
 
-  const renderSectionHeader = ({
-    section: { title, count },
-  }: {
-    section: OccurrenceSection;
-  }) => (
+  const renderSectionHeader = ({ section: { title, count } }: any) => (
     <View style={styles.sectionHeader}>
       <Text style={styles.sectionTitle}>{title}</Text>
       <View style={styles.sectionBadge}>
@@ -226,11 +294,25 @@ export default function HomeScreen() {
     </View>
   );
 
+  // Helpers de estilo
+  const getStatusColor = (s: string) =>
+    s === "Em_andamento"
+      ? "#FF8C00"
+      : s === "Encerrada"
+        ? "#4CAF50"
+        : "#9E9E9E";
+  const getPriorityColor = (p: string) =>
+    p === "Alta" || p === "Critica" ? "#D32F2F" : "#1976D2";
+  const getPriorityBg = (p: string) =>
+    p === "Alta" || p === "Critica" ? "#FFEBEE" : "#E3F2FD";
+
+  const activeFiltersCount = Object.values(filters).filter(Boolean).length;
+
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#1650A7" />
 
-      {/* Header Azul */}
+      {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerTop}>
           <View>
@@ -244,7 +326,7 @@ export default function HomeScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Barra de Pesquisa e Filtro */}
+        {/* Busca e Botão de Filtro */}
         <View style={styles.searchRow}>
           <View style={styles.searchContainer}>
             <Feather
@@ -254,12 +336,11 @@ export default function HomeScreen() {
               style={{ marginRight: 8 }}
             />
             <TextInput
-              placeholder="Pesquisar ID ou Título..."
+              placeholder="Buscar ID ou Título..."
               placeholderTextColor="#999"
               style={styles.searchInput}
               value={searchText}
               onChangeText={setSearchText}
-              keyboardType="default"
             />
             {searchText.length > 0 && (
               <TouchableOpacity onPress={() => setSearchText("")}>
@@ -271,27 +352,31 @@ export default function HomeScreen() {
           <TouchableOpacity
             style={[
               styles.filterButton,
-              selectedPriority && styles.filterButtonActive,
+              activeFiltersCount > 0 && styles.filterButtonActive,
             ]}
-            onPress={() => setFilterModalVisible(true)}
+            onPress={() => setIsFilterVisible(true)}
           >
             <Feather
               name="filter"
               size={22}
-              color={selectedPriority ? "#FFF" : "#1650A7"}
+              color={activeFiltersCount > 0 ? "#FFF" : "#1650A7"}
             />
+            {activeFiltersCount > 0 && (
+              <View style={styles.filterBadge}>
+                <Text style={styles.filterBadgeText}>{activeFiltersCount}</Text>
+              </View>
+            )}
           </TouchableOpacity>
         </View>
       </View>
 
-      {/* Lista de Seções */}
+      {/* Lista */}
       {loading ? (
-        <View style={styles.centerContent}>
-          <ActivityIndicator size="large" color="#1650A7" />
-          <Text style={{ marginTop: 10, color: "#666" }}>
-            Carregando ocorrências...
-          </Text>
-        </View>
+        <ActivityIndicator
+          size="large"
+          color="#1650A7"
+          style={{ marginTop: 50 }}
+        />
       ) : (
         <SectionList
           sections={sections}
@@ -299,92 +384,43 @@ export default function HomeScreen() {
           renderItem={renderItem}
           renderSectionHeader={renderSectionHeader}
           contentContainerStyle={styles.listContent}
-          onRefresh={fetchOccurrences} // Pull to refresh
+          onRefresh={fetchOccurrences}
           refreshing={refreshing}
+          stickySectionHeadersEnabled={false}
           ListEmptyComponent={
             <View style={styles.centerContent}>
               <Feather name="inbox" size={40} color="#CCC" />
               <Text style={styles.emptyText}>
-                {searchText
-                  ? "Nenhuma ocorrência encontrada para essa busca."
-                  : "Nenhuma ocorrência registrada."}
+                Nenhuma ocorrência encontrada.
               </Text>
             </View>
           }
-          stickySectionHeadersEnabled={false} // Headers não fixos (design mais limpo)
         />
       )}
 
-      {/* MODAL DE FILTROS */}
-      <Modal
-        animationType="slide"
-        transparent={true}
-        visible={filterModalVisible}
-        onRequestClose={() => setFilterModalVisible(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Filtrar Ocorrências</Text>
-              <TouchableOpacity onPress={() => setFilterModalVisible(false)}>
-                <Feather name="x" size={24} color="#333" />
-              </TouchableOpacity>
-            </View>
-
-            <Text style={styles.filterLabel}>Prioridade:</Text>
-            <View style={styles.filterOptions}>
-              {["Baixa", "Media", "Alta", "Critica"].map((p) => (
-                <TouchableOpacity
-                  key={p}
-                  style={[
-                    styles.filterChip,
-                    selectedPriority === p && styles.filterChipActive,
-                  ]}
-                  onPress={() =>
-                    setSelectedPriority(selectedPriority === p ? null : p)
-                  }
-                >
-                  <Text
-                    style={[
-                      styles.filterChipText,
-                      selectedPriority === p && styles.filterChipTextActive,
-                    ]}
-                  >
-                    {p}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-
-            <TouchableOpacity
-              style={styles.applyButton}
-              onPress={() => setFilterModalVisible(false)}
-            >
-              <Text style={styles.applyButtonText}>Aplicar Filtros</Text>
-            </TouchableOpacity>
-
-            {selectedPriority && (
-              <TouchableOpacity
-                style={styles.clearFilterButton}
-                onPress={() => {
-                  setSelectedPriority(null);
-                  setFilterModalVisible(false);
-                }}
-              >
-                <Text style={styles.clearFilterText}>Limpar Filtros</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-        </View>
-      </Modal>
+      {/* Modal de Filtros */}
+      <FilterModal
+        visible={isFilterVisible}
+        onClose={() => setIsFilterVisible(false)}
+        filters={filters}
+        setFilters={setFilters}
+        onApply={() => setIsFilterVisible(false)}
+        onClear={() =>
+          setFilters({
+            startDate: "",
+            endDate: "",
+            status: null,
+            region: null,
+            type: null,
+          })
+        }
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#F5F5F5" },
-
-  // Header
   header: {
     backgroundColor: "#1650A7",
     paddingTop: 50,
@@ -408,7 +444,6 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
 
-  // Busca
   searchRow: { flexDirection: "row", gap: 10 },
   searchContainer: {
     flex: 1,
@@ -428,13 +463,21 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  filterButtonActive: {
-    backgroundColor: "#FF8C00", // Laranja quando ativo
-    borderColor: "#FFF",
-    borderWidth: 1,
+  filterButtonActive: { backgroundColor: "#1650A7" },
+  filterBadge: {
+    position: "absolute",
+    top: -5,
+    right: -5,
+    backgroundColor: "#FF4444",
+    borderRadius: 10,
+    width: 20,
+    height: 20,
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 10,
   },
+  filterBadgeText: { color: "#FFF", fontSize: 10, fontWeight: "bold" },
 
-  // Lista
   listContent: { padding: 20, paddingBottom: 100 },
   centerContent: {
     flex: 1,
@@ -442,19 +485,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginTop: 50,
   },
-  emptyText: {
-    color: "#999",
-    fontSize: 16,
-    marginTop: 10,
-    textAlign: "center",
-  },
+  emptyText: { color: "#999", fontSize: 16, marginTop: 10 },
 
-  // Seções
   sectionHeader: {
     flexDirection: "row",
     alignItems: "center",
     marginBottom: 10,
-    marginTop: 10,
+    marginTop: 15,
   },
   sectionTitle: {
     fontSize: 18,
@@ -470,17 +507,12 @@ const styles = StyleSheet.create({
   },
   sectionBadgeText: { fontSize: 12, fontWeight: "bold", color: "#666" },
 
-  // Card
   card: {
     backgroundColor: "#FFF",
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
     elevation: 2,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
   },
   cardHeader: {
     flexDirection: "row",
@@ -518,58 +550,4 @@ const styles = StyleSheet.create({
   footerInfo: { flexDirection: "row", alignItems: "center", gap: 5 },
   dateText: { fontSize: 12, color: "#999" },
   idText: { fontSize: 12, color: "#1650A7", fontWeight: "bold" },
-
-  // Modal Filtros
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.5)",
-    justifyContent: "flex-end",
-  },
-  modalContent: {
-    backgroundColor: "#FFF",
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    padding: 20,
-    minHeight: 300,
-  },
-  modalHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 20,
-  },
-  modalTitle: { fontSize: 20, fontWeight: "bold", color: "#333" },
-  filterLabel: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#666",
-    marginBottom: 10,
-  },
-  filterOptions: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 10,
-    marginBottom: 20,
-  },
-  filterChip: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: "#F5F5F5",
-    borderWidth: 1,
-    borderColor: "#E0E0E0",
-  },
-  filterChipActive: { backgroundColor: "#E3F2FD", borderColor: "#1650A7" },
-  filterChipText: { color: "#666" },
-  filterChipTextActive: { color: "#1650A7", fontWeight: "bold" },
-  applyButton: {
-    backgroundColor: "#1650A7",
-    padding: 15,
-    borderRadius: 10,
-    alignItems: "center",
-    marginTop: 10,
-  },
-  applyButtonText: { color: "#FFF", fontSize: 16, fontWeight: "bold" },
-  clearFilterButton: { marginTop: 15, alignItems: "center" },
-  clearFilterText: { color: "#FF4444", fontSize: 14 },
 });
