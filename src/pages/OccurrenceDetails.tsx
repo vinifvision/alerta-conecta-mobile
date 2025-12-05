@@ -5,96 +5,85 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Dimensions,
+  ActivityIndicator,
+  Alert,
 } from "react-native";
-import { useNavigation, useRoute } from "@react-navigation/native";
-import { Feather } from "@expo/vector-icons";
-import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
+import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
+import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import MapView, { Marker } from "react-native-maps";
 
-// --- MESMOS DADOS MOCK DA HOME (Para garantir que o ID bata) ---
-const MOCK_DATA_DETAILS = [
-  {
-    id: 101,
-    titule: "Incêndio em Edificação Residencial",
-    type: 1,
-    nome_tipo: "Incêndio",
-    date: "2025-10-25T14:30:00",
-    status: "Em_andamento",
-    priority: "Alta",
-    details:
-      "Fogo no segundo andar, fumaça preta saindo pela janela. Moradores evacuados.",
-    victims: "2 adultos (inalação de fumaça)",
-    address: "Rua da Aurora, 123, Recife - PE",
-    lat: -8.063169,
-    lng: -34.871139,
-    region: "RMR",
-  },
-  {
-    id: 102,
-    titule: "Resgate Veicular na BR-101",
-    type: 2,
-    nome_tipo: "Resgate",
-    date: "2025-10-25T16:00:00",
-    status: "Encerrada",
-    priority: "Media",
-    details: "Colisão entre carro e moto. Motociclista consciente.",
-    victims: "1 vítima (escoriações leves)",
-    address: "BR-101 Norte, km 45, Abreu e Lima - PE",
-    lat: -7.908988,
-    lng: -34.902683,
-    region: "Zona da Mata",
-  },
-  // ... Adicione os outros IDs se precisar testar todos
-];
+// Importar da Nova Arquitetura
+import { occurrenceService } from "../services/occurrenceService"; // Serviço
+import { Occurrence } from "../types"; // Tipos centrais
+
+// Tipo dos parâmetros da rota (o ID que vem da Home)
+type ParamList = {
+  OccurrenceDetails: { id: number };
+};
 
 export default function OccurrenceDetails() {
   const navigation = useNavigation();
-  const route = useRoute();
-  const { id } = route.params as { id: number }; // Pega o ID que veio da Home
+  const route = useRoute<RouteProp<ParamList, "OccurrenceDetails">>();
+  const { id } = route.params; // Pega o ID passado
 
-  const [occurrence, setOccurrence] = useState<any>(null);
+  const [occurrence, setOccurrence] = useState<Occurrence | null>(null);
+  const [loading, setLoading] = useState(true);
 
+  // --- Busca de Dados (Via Serviço) ---
   useEffect(() => {
-    // BUSCA LOCAL NO MOCK (Sem API)
-    const found = MOCK_DATA_DETAILS.find((item) => item.id === id);
+    const loadDetails = async () => {
+      try {
+        // O serviço decide se pega do Mock ou da API
+        const data = await occurrenceService.getById(id);
 
-    if (found) {
-      setOccurrence(found);
-    } else {
-      // Fallback se não achar no mock (apenas para não quebrar)
-      setOccurrence({
-        id: id,
-        titule: `Ocorrência #${id}`,
-        nome_tipo: "Tipo Desconhecido",
-        date: new Date().toISOString(),
-        status: "Em_andamento",
-        priority: "Media",
-        details: "Detalhes não encontrados no mock local.",
-        address: "Localização não disponível",
-        lat: -8.047562, // Centro do Recife
-        lng: -34.877001,
-      });
-    }
+        if (data) {
+          setOccurrence(data);
+        } else {
+          Alert.alert("Erro", "Ocorrência não encontrada.");
+          navigation.goBack();
+        }
+      } catch (error) {
+        console.error(error);
+        Alert.alert("Erro", "Falha ao carregar detalhes.");
+        navigation.goBack();
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadDetails();
   }, [id]);
 
-  if (!occurrence)
+  if (loading) {
     return (
       <View style={styles.loading}>
-        <Text>Carregando...</Text>
+        <ActivityIndicator size="large" color="#1650A7" />
+        <Text style={{ marginTop: 10, color: "#666" }}>
+          Carregando detalhes...
+        </Text>
       </View>
     );
+  }
 
-  // Helpers de cor
+  if (!occurrence) return null;
+
+  // Helpers de UI
   const getStatusColor = (status: string) => {
-    if (status === "Em_andamento") return "#FF8C00";
-    if (status === "Encerrada") return "#4CAF50";
+    if (status.includes("Em")) return "#FF8C00";
+    if (status.includes("Encerrada")) return "#4CAF50";
     return "#9E9E9E";
   };
 
-  // Formatação de Data
   const dateObj = new Date(occurrence.date);
   const formattedDate = `${dateObj.toLocaleDateString("pt-BR")} às ${dateObj.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`;
+
+  // Coordenadas padrão (Recife) se não vierem na ocorrência
+  const initialRegion = {
+    latitude: occurrence.lat || -8.047562,
+    longitude: occurrence.lng || -34.877001,
+    latitudeDelta: 0.01,
+    longitudeDelta: 0.01,
+  };
 
   return (
     <View style={styles.container}>
@@ -111,21 +100,13 @@ export default function OccurrenceDetails() {
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
-        {/* Mapa (Estático com Marker) */}
+        {/* Mapa */}
         <View style={styles.mapContainer}>
-          <MapView
-            style={styles.map}
-            initialRegion={{
-              latitude: occurrence.lat || -8.047,
-              longitude: occurrence.lng || -34.877,
-              latitudeDelta: 0.01,
-              longitudeDelta: 0.01,
-            }}
-          >
+          <MapView style={styles.map} initialRegion={initialRegion}>
             <Marker
               coordinate={{
-                latitude: occurrence.lat || -8.047,
-                longitude: occurrence.lng || -34.877,
+                latitude: initialRegion.latitude,
+                longitude: initialRegion.longitude,
               }}
             />
           </MapView>
@@ -136,31 +117,39 @@ export default function OccurrenceDetails() {
               color="#1650A7"
             />
             <Text style={styles.addressText} numberOfLines={1}>
-              {occurrence.address}
+              {occurrence.address || "Endereço não disponível"}
             </Text>
           </View>
         </View>
 
-        {/* Título e Status */}
+        {/* Card Principal */}
         <View style={styles.mainCard}>
-          <Text style={styles.occurrenceTitle}>{occurrence.titule}</Text>
+          <Text style={styles.occurrenceTitle}>
+            {occurrence.titule || `Ocorrência #${occurrence.id}`}
+          </Text>
           <View style={styles.rowBetween}>
-            <Text style={styles.occurrenceType}>{occurrence.nome_tipo}</Text>
+            <Text style={styles.occurrenceType}>
+              {occurrence.nome_tipo || `Tipo ${occurrence.type}`}
+            </Text>
             <View
               style={[
                 styles.statusBadge,
                 { backgroundColor: getStatusColor(occurrence.status) },
               ]}
             >
-              <Text style={styles.statusText}>{occurrence.status}</Text>
+              <Text style={styles.statusText}>
+                {occurrence.status.replace("_", " ")}
+              </Text>
             </View>
           </View>
         </View>
 
-        {/* Detalhes e Vítimas */}
+        {/* Descrição e Vítimas */}
         <View style={styles.infoCard}>
           <Text style={styles.sectionTitle}>Descrição</Text>
-          <Text style={styles.descriptionText}>{occurrence.details}</Text>
+          <Text style={styles.descriptionText}>
+            {occurrence.details || "Sem descrição."}
+          </Text>
 
           <View style={styles.divider} />
 
@@ -170,7 +159,7 @@ export default function OccurrenceDetails() {
           </Text>
         </View>
 
-        {/* Data e Prioridade */}
+        {/* Grid Data e Prioridade */}
         <View style={styles.grid}>
           <View style={styles.smallCard}>
             <Feather name="calendar" size={20} color="#666" />
@@ -183,7 +172,13 @@ export default function OccurrenceDetails() {
             <Text
               style={[
                 styles.value,
-                { color: occurrence.priority === "Alta" ? "#D32F2F" : "#333" },
+                {
+                  color:
+                    occurrence.priority === "Alta" ||
+                    occurrence.priority === "Critica"
+                      ? "#D32F2F"
+                      : "#333",
+                },
               ]}
             >
               {occurrence.priority}
@@ -209,7 +204,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: { color: "#FFF", fontSize: 18, fontWeight: "bold" },
   backButton: { padding: 5 },
-  content: { padding: 20 },
+  content: { padding: 20, paddingBottom: 40 },
 
   mapContainer: {
     height: 200,
