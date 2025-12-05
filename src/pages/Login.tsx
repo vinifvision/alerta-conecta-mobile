@@ -8,13 +8,15 @@ import {
   TextInput,
   Alert,
   ActivityIndicator,
+  TouchableWithoutFeedback,
+  Keyboard,
 } from "react-native";
-import { useAuth } from "../contexts/AuthContext"; // Importando o contexto
+import { useAuth } from "../contexts/AuthContext";
 
 export default function LoginScreen() {
   const [usuario, setUsuario] = useState("");
   const [senha, setSenha] = useState("");
-  const { login, loading } = useAuth(); // Usando a função do contexto
+  const { login, loading } = useAuth();
   const [isLocalLoading, setIsLocalLoading] = useState(false);
 
   async function handleLogin() {
@@ -33,49 +35,51 @@ export default function LoginScreen() {
   }
 
   return (
-    <View style={styles.container}>
-      <View style={styles.logoContainer}>
-        <Image
-          source={require("../assets/alertaconecta-logo.png")}
-          style={styles.logo}
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+      <View style={styles.container}>
+        <View style={styles.logoContainer}>
+          <Image
+            source={require("../assets/alertaconecta-logo.png")}
+            style={styles.logo}
+          />
+        </View>
+
+        <View style={styles.loginContainer}>
+          <Text style={styles.loginTitle}>Fazer login</Text>
+          <Text style={styles.loginSubtitle}>Conecte-se com uma conta</Text>
+        </View>
+
+        <TextInput
+          style={styles.input}
+          placeholder="Usuário (CPF)"
+          placeholderTextColor="#BDBDBD"
+          value={usuario}
+          onChangeText={setUsuario}
+          autoCapitalize="none"
+          keyboardType="numeric"
         />
+        <TextInput
+          style={styles.input}
+          placeholder="Senha"
+          placeholderTextColor="#BDBDBD"
+          value={senha}
+          onChangeText={setSenha}
+          secureTextEntry
+        />
+
+        <TouchableOpacity
+          style={styles.loginButton}
+          onPress={handleLogin}
+          disabled={isLocalLoading || loading}
+        >
+          {isLocalLoading ? (
+            <ActivityIndicator color="#FFF" />
+          ) : (
+            <Text style={styles.loginButtonText}>Entrar</Text>
+          )}
+        </TouchableOpacity>
       </View>
-
-      <View style={styles.loginContainer}>
-        <Text style={styles.loginTitle}>Fazer login</Text>
-        <Text style={styles.loginSubtitle}>Conecte-se com uma conta</Text>
-      </View>
-
-      <TextInput
-        style={styles.input}
-        placeholder="Usuário (CPF)"
-        placeholderTextColor="#BDBDBD"
-        value={usuario}
-        onChangeText={setUsuario}
-        autoCapitalize="none"
-        keyboardType="numeric"
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Senha"
-        placeholderTextColor="#BDBDBD"
-        value={senha}
-        onChangeText={setSenha}
-        secureTextEntry
-      />
-
-      <TouchableOpacity
-        style={styles.loginButton}
-        onPress={handleLogin}
-        disabled={isLocalLoading || loading}
-      >
-        {isLocalLoading ? (
-          <ActivityIndicator color="#FFF" />
-        ) : (
-          <Text style={styles.loginButtonText}>Entrar</Text>
-        )}
-      </TouchableOpacity>
-    </View>
+    </TouchableWithoutFeedback>
   );
 }
 
