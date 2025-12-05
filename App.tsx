@@ -1,21 +1,51 @@
-// App.tsx
-
 import React from "react";
 import { ActivityIndicator, View } from "react-native";
 import { NavigationContainer } from "@react-navigation/native";
 import { createStackNavigator } from "@react-navigation/stack";
+import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+import { Ionicons } from "@expo/vector-icons"; // Ícones do Expo
 
-// Contexto
 import { AuthProvider, useAuth } from "./src/contexts/AuthContext";
 
-// Importe TODAS as telas
+// Telas
 import WelcomeScreen from "./src/pages/Welcome";
 import LoginScreen from "./src/pages/Login";
 import HomeScreen from "./src/pages/Home";
-import OccurrenceDetails from "./src/pages/OccurrenceDetails"; // <--- IMPORTANTE
+import ProfileScreen from "./src/pages/Profile";
+import OccurrenceDetails from "./src/pages/OccurrenceDetails";
 
 const Stack = createStackNavigator();
+const Tab = createBottomTabNavigator();
 
+// --- 1. Navegação Interna (Abas) ---
+function AppTabs() {
+  return (
+    <Tab.Navigator
+      id="AppTabs"
+      screenOptions={({ route }) => ({
+        headerShown: false,
+        tabBarActiveTintColor: "#1650A7",
+        tabBarInactiveTintColor: "gray",
+        tabBarIcon: ({ focused, color, size }) => {
+          let iconName: any;
+
+          if (route.name === "Ocorrências") {
+            iconName = focused ? "list" : "list-outline";
+          } else if (route.name === "Perfil") {
+            iconName = focused ? "person" : "person-outline";
+          }
+
+          return <Ionicons name={iconName} size={size} color={color} />;
+        },
+      })}
+    >
+      <Tab.Screen name="Ocorrências" component={HomeScreen} />
+      <Tab.Screen name="Perfil" component={ProfileScreen} />
+    </Tab.Navigator>
+  );
+}
+
+// --- 2. Navegação Principal (Stack) ---
 function Routes() {
   const { signed, loading } = useAuth();
 
@@ -30,16 +60,16 @@ function Routes() {
   return (
     <Stack.Navigator id="main-stack" screenOptions={{ headerShown: false }}>
       {signed ? (
-        // --- Rotas de Usuário Logado ---
+        // Se logado, vai para as Abas (Home + Perfil)
         <>
-          <Stack.Screen name="Home" component={HomeScreen} />
+          <Stack.Screen name="Main" component={AppTabs} />
           <Stack.Screen
             name="OccurrenceDetails"
             component={OccurrenceDetails}
           />
         </>
       ) : (
-        // --- Rotas de Login ---
+        // Se não logado, vai para fluxo de Auth
         <>
           <Stack.Screen name="Welcome" component={WelcomeScreen} />
           <Stack.Screen name="Login" component={LoginScreen} />
