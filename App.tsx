@@ -13,6 +13,7 @@ import LoginScreen from "./src/pages/Login";
 import HomeScreen from "./src/pages/Home";
 import ProfileScreen from "./src/pages/Profile";
 import OccurrenceDetails from "./src/pages/OccurrenceDetails";
+import SettingsScreen from "./src/pages/Settings";
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -67,6 +68,7 @@ function Routes() {
             name="OccurrenceDetails"
             component={OccurrenceDetails}
           />
+          <Stack.Screen name="Settings" component={SettingsScreen} />
         </>
       ) : (
         // Se não logado, vai para fluxo de Auth
