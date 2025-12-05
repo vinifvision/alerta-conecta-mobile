@@ -17,6 +17,7 @@ import {
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useAuth } from "../contexts/AuthContext"; // Importe o contexto
 import FilterModal, { FilterState } from "../components/FilterModal"; // Importe o modal
 
@@ -118,9 +119,15 @@ const MOCK_DATA: Occurrence[] = [
     region: "RMR",
   },
 ];
+type RootStackParamList = {
+  Home: undefined;
+  OccurrenceDetails: { id: number };
+  // adicione outros nomes de rotas conforme necessário
+};
 
 export default function HomeScreen() {
-  const navigation = useNavigation(); // Adicionado para navegação funcionar se precisar
+  const navigation =
+    useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { user, logout } = useAuth();
 
   // Dados
@@ -242,7 +249,9 @@ export default function HomeScreen() {
     return (
       <TouchableOpacity
         style={styles.card}
-        onPress={() => console.log("Detalhes", item.id)}
+        onPress={() =>
+          navigation.navigate("OccurrenceDetails", { id: item.id })
+        }
       >
         <View style={styles.cardHeader}>
           <View
