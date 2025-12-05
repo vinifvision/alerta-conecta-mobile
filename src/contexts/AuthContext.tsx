@@ -1,4 +1,3 @@
-// src/contexts/AuthContext.tsx
 import React, {
   createContext,
   useState,
@@ -7,8 +6,8 @@ import React, {
   ReactNode,
 } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { User } from "../types"; // Importa de types/index.ts
-import { authService } from "../services/authService"; // Importa o serviço
+import { User } from "../types";
+import { authService } from "../services/authService";
 
 interface AuthContextType {
   user: User | null;
@@ -27,11 +26,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     async function loadStorageData() {
       const storedUser = await AsyncStorage.getItem("@App:user");
-      const storedToken = await AsyncStorage.getItem("@App:token");
-
-      if (storedUser && storedToken) {
-        setUser(JSON.parse(storedUser));
-      }
+      if (storedUser) setUser(JSON.parse(storedUser));
       setLoading(false);
     }
     loadStorageData();
@@ -39,16 +34,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const login = async (cpf: string, pass: string) => {
     try {
-      // Chama o serviço (ele decide se é mock ou real)
+      // Chama o serviço (ele cuida se é mock ou real)
       const userData = await authService.login(cpf, pass);
 
-      // Salva e atualiza estado
       await AsyncStorage.setItem("@App:user", JSON.stringify(userData));
       if (userData.token)
         await AsyncStorage.setItem("@App:token", userData.token);
 
       setUser(userData);
-    } catch (error: any) {
+    } catch (error) {
       throw error;
     }
   };

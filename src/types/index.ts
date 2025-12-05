@@ -1,30 +1,32 @@
 // src/types/index.ts
 
+// Status e Prioridades padronizados (Enum no banco)
 export type OccurrenceStatus = "Em_andamento" | "Encerrada" | "Cancelada";
 export type OccurrencePriority = "Baixa" | "Media" | "Alta" | "Critica";
 
-// Tipo unificado da Ocorrência
+// Tipo principal da Ocorrência (reflete o banco de dados + campos calculados)
 export type Occurrence = {
   id: number;
-  titule: string | null; // Nome do subtipo (Ex: Incêndio em Edificação)
-  type: number; // ID do tipo principal
-  nome_tipo?: string; // Nome do tipo principal (Ex: Incêndio)
-  date: string; // ISO String (2025-10-24T...)
+  titule: string | null; // Nome do subtipo (Ex: "Incêndio em Edificação")
+  type: number; // ID do Tipo Principal (Ex: 1)
+  nome_tipo: string; // Nome do Tipo Principal (Ex: "Incêndio")
+  date: string; // Data ISO (2025-10-25T14:30:00)
   status: OccurrenceStatus;
   priority: OccurrencePriority;
-  victims: string | null;
-  details: string | null;
-  address?: string | null; // Endereço formatado
+
+  // Campos opcionais (podem vir null da API ou não serem usados na lista simples)
+  victims?: string | null;
+  details?: string | null;
+  address?: string | null;
   lat?: number | null;
   lng?: number | null;
 
-  // Campos detalhados de endereço (úteis para edição/registro)
+  // Campos auxiliares de endereço (úteis para o registro)
   rua?: string;
   numero?: string;
   nome_bairro?: string;
   nome_cidade?: string;
   nome_estado?: string;
-  descricao_tipo?: string;
 };
 
 // Tipo do Usuário
@@ -37,5 +39,5 @@ export type User = {
   token?: string;
 };
 
-// Opções para Selects/Dropdowns
+// Opções para Dropdowns (Selects)
 export type FilterOption = { value: string | number; label: string };

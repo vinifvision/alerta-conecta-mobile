@@ -1,21 +1,21 @@
 import { User } from "../types";
 import { MOCK_USER } from "./mockData";
 
+// URL da API real
 const API_URL =
   "https://alerta-conecta-backend-production.up.railway.app/database";
-
-// Mude para FALSE quando quiser conectar no backend real
-const USE_MOCK = true;
+const USE_MOCK = true; // <--- MUDE PARA FALSE QUANDO QUISER USAR O BACKEND
 
 export const authService = {
   login: async (cpf: string, pass: string): Promise<User> => {
+    // Modo Mock
     if (USE_MOCK) {
-      // Simula delay de rede
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      await new Promise((resolve) => setTimeout(resolve, 1000)); // Delay fake
       if (cpf && pass) return MOCK_USER;
-      throw new Error("Credenciais inválidas (Mock)");
+      throw new Error("Credenciais inválidas (Simulação)");
     }
 
+    // Modo Real
     const response = await fetch(`${API_URL}/user/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },

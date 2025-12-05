@@ -47,8 +47,14 @@ export default function Home() {
   const [searchText, setSearchText] = useState("");
   const [isFilterVisible, setIsFilterVisible] = useState(false);
 
-  // Filtro simplificado por Prioridade (você pode expandir depois)
-  const [selectedPriority, setSelectedPriority] = useState<string | null>(null);
+  // Estados dos filtros do modal
+  const [filters, setFilters] = useState({
+    startDate: "",
+    endDate: "",
+    status: null as string | null,
+    adress: null as string | null,
+    type: null as number | null,
+  });
 
   // --- 1. Busca de Dados (Limpa) ---
   const loadData = async () => {
@@ -74,19 +80,61 @@ export default function Home() {
 
   // --- 2. Lógica de Filtros e Seções (useMemo) ---
   const sections = useMemo(() => {
+    // Função auxiliar para converter DD/MM/AAAA para Date
+    const parseDate = (dateStr: string): Date | null => {
+      if (!dateStr) return null;
+      const parts = dateStr.split("/");
+      if (parts.length !== 3) return null;
+      const [day, month, year] = parts;
+      return new Date(`${year}-${month}-${day}`);
+    };
+
     // a) Filtrar
     const filtered = occurrences.filter((item) => {
+      // Filtro de busca (ID ou Título)
       const matchSearch = searchText
         ? String(item.id).includes(searchText) ||
           (item.titule &&
             item.titule.toLowerCase().includes(searchText.toLowerCase()))
         : true;
 
-      const matchPriority = selectedPriority
-        ? item.priority === selectedPriority
+      // Filtro de Data (período)
+      let matchDate = true;
+      if (filters.startDate || filters.endDate) {
+        const itemDate = new Date(item.date);
+        if (filters.startDate) {
+          const startDate = parseDate(filters.startDate);
+          if (startDate && itemDate < startDate) matchDate = false;
+        }
+        if (filters.endDate) {
+          const endDate = parseDate(filters.endDate);
+          if (endDate) {
+            // Adiciona 1 dia para incluir todo o dia final
+            endDate.setDate(endDate.getDate() + 1);
+            if (itemDate > endDate) matchDate = false;
+          }
+        }
+      }
+
+      // Filtro de Status
+      const matchStatus = filters.status
+        ? item.status === filters.status ||
+          item.status === filters.status.replace("_", " ")
         : true;
 
-      return matchSearch && matchPriority;
+      // Filtro de Tipo
+      const matchType = filters.type ? item.type === filters.type : true;
+
+      // Filtro de Região/Endereço
+      const matchAdress = filters.adress
+        ? item.address?.includes(filters.adress) ||
+          item.nome_bairro?.includes(filters.adress) ||
+          item.nome_cidade?.includes(filters.adress)
+        : true;
+
+      return (
+        matchSearch && matchDate && matchStatus && matchType && matchAdress
+      );
     });
 
     // b) Agrupar por Status
@@ -108,7 +156,7 @@ export default function Home() {
     addSection("Canceladas", "Cancelada");
 
     return result;
-  }, [occurrences, searchText, selectedPriority]);
+  }, [occurrences, searchText, filters]);
 
   // --- 3. Renderização dos Itens ---
 
@@ -217,8 +265,22 @@ export default function Home() {
           onClear={() => setSearchText("")}
           placeholder="Buscar ID ou Título..."
           onFilterPress={() => setIsFilterVisible(true)}
-          filterActive={!!selectedPriority}
-          filterCount={selectedPriority ? 1 : 0}
+          filterActive={
+            !!filters.status ||
+            !!filters.type ||
+            !!filters.adress ||
+            !!filters.startDate ||
+            !!filters.endDate
+          }
+          filterCount={
+            [
+              filters.status,
+              filters.type,
+              filters.adress,
+              filters.startDate,
+              filters.endDate,
+            ].filter(Boolean).length
+          }
         />
       </View>
 
@@ -254,17 +316,17 @@ export default function Home() {
         onClose={() => setIsFilterVisible(false)}
         onApply={() => setIsFilterVisible(false)}
         onClear={() => {
-          setSelectedPriority(null);
+          setFilters({
+            startDate: "",
+            endDate: "",
+            status: null,
+            adress: null,
+            type: null,
+          });
           setIsFilterVisible(false);
         }}
-        filters={{
-          startDate: null,
-          endDate: null,
-          status: null,
-          region: null,
-          type: null,
-        }}
-        setFilters={() => {}}
+        filters={filters}
+        setFilters={setFilters}
       />
     </View>
   );

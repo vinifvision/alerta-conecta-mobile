@@ -1,5 +1,3 @@
-// src/components/FilterModal.tsx
-
 import React from "react";
 import {
   View,
@@ -14,16 +12,16 @@ import {
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
 
-// Tipos de Filtro
+// Tipos de Filtro (Exportado para usar na Home)
 export type FilterState = {
   startDate: string;
   endDate: string;
   status: string | null;
-  region: string | null;
+  adress: string | null;
   type: number | null;
 };
 
-// Opções para os filtros
+// Opções de Filtro
 const STATUS_OPTIONS = [
   { label: "Em Andamento", value: "Em_andamento" },
   { label: "Encerrada", value: "Encerrada" },
@@ -59,12 +57,12 @@ export default function FilterModal({
   onApply,
   onClear,
 }: FilterModalProps) {
-  // Helper para atualizar um campo específico
+  // Função auxiliar para atualizar o estado
   const updateFilter = (key: keyof FilterState, value: any) => {
     setFilters({ ...filters, [key]: value });
   };
 
-  // Formata data DD/MM/AAAA
+  // Formata a data enquanto digita (DD/MM/AAAA)
   const handleDateChange = (text: string, key: "startDate" | "endDate") => {
     let clean = text.replace(/\D/g, "");
     if (clean.length > 8) clean = clean.substring(0, 8);
@@ -90,7 +88,6 @@ export default function FilterModal({
           style={styles.keyboardView}
         >
           <View style={styles.container}>
-            {/* Cabeçalho */}
             <View style={styles.header}>
               <Text style={styles.title}>Filtrar Ocorrências</Text>
               <TouchableOpacity onPress={onClose}>
@@ -103,7 +100,7 @@ export default function FilterModal({
               contentContainerStyle={styles.content}
             >
               {/* 1. Período */}
-              <Text style={styles.sectionTitle}>Período (Data)</Text>
+              <Text style={styles.sectionTitle}>Período</Text>
               <View style={styles.dateRow}>
                 <View style={styles.dateInputWrapper}>
                   <Text style={styles.label}>De:</Text>
@@ -161,38 +158,38 @@ export default function FilterModal({
               {/* 3. Região */}
               <Text style={styles.sectionTitle}>Região</Text>
               <View style={styles.chipsRow}>
-                {REGION_OPTIONS.map((region) => (
+                {REGION_OPTIONS.map((adress) => (
                   <TouchableOpacity
-                    key={region}
+                    key={adress}
                     style={[
                       styles.chip,
-                      filters.region === region && styles.chipActive,
+                      filters.adress === adress && styles.chipActive,
                     ]}
                     onPress={() =>
                       updateFilter(
-                        "region",
-                        filters.region === region ? null : region,
+                        "adress",
+                        filters.adress === adress ? null : adress,
                       )
                     }
                   >
                     <Text
                       style={[
                         styles.chipText,
-                        filters.region === region && styles.chipTextActive,
+                        filters.adress === adress && styles.chipTextActive,
                       ]}
                     >
-                      {region}
+                      {adress}
                     </Text>
                   </TouchableOpacity>
                 ))}
               </View>
 
               {/* 4. Tipo */}
-              <Text style={styles.sectionTitle}>Tipo de Ocorrência</Text>
+              <Text style={styles.sectionTitle}>Tipo</Text>
               <View style={styles.chipsRow}>
                 {TYPE_OPTIONS.map((opt) => (
                   <TouchableOpacity
-                    key={opt.value}
+                    key={opt.value} // Usando o value (number) como chave única
                     style={[
                       styles.chip,
                       filters.type === opt.value && styles.chipActive,
@@ -217,13 +214,12 @@ export default function FilterModal({
               </View>
             </ScrollView>
 
-            {/* Rodapé (Botões) */}
             <View style={styles.footer}>
               <TouchableOpacity style={styles.clearButton} onPress={onClear}>
                 <Text style={styles.clearText}>Limpar</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.applyButton} onPress={onApply}>
-                <Text style={styles.applyText}>Aplicar Filtros</Text>
+                <Text style={styles.applyText}>Aplicar</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -263,8 +259,6 @@ const styles = StyleSheet.create({
     marginTop: 15,
     marginBottom: 10,
   },
-
-  // Datas
   dateRow: { flexDirection: "row", gap: 15 },
   dateInputWrapper: { flex: 1 },
   label: { fontSize: 12, color: "#666", marginBottom: 4 },
@@ -276,8 +270,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#E0E0E0",
   },
-
-  // Chips
   chipsRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   chip: {
     paddingHorizontal: 12,
@@ -290,8 +282,6 @@ const styles = StyleSheet.create({
   chipActive: { backgroundColor: "#E3F2FD", borderColor: "#1650A7" },
   chipText: { color: "#666", fontSize: 13 },
   chipTextActive: { color: "#1650A7", fontWeight: "bold" },
-
-  // Footer
   footer: {
     flexDirection: "row",
     padding: 20,
