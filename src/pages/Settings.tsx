@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import {
   View,
   Text,
@@ -6,256 +6,203 @@ import {
   TouchableOpacity,
   Switch,
   ScrollView,
-  Modal,
+  Alert,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
-import { Ionicons } from "@expo/vector-icons";
+import { Feather } from "@expo/vector-icons";
 import { useAuth } from "../contexts/AuthContext";
+import { useTheme } from "../contexts/ThemeContext"; // <--- IMPORTANTE
 
 export default function SettingsScreen() {
   const navigation = useNavigation();
-  const { logout } = useAuth();
-  const [altoContraste, setAltoContraste] = useState(false);
-  const [tamanhoFonte, setTamanhoFonte] = useState("Média");
-  const [showFontModal, setShowFontModal] = useState(false);
+  const { logout, user } = useAuth();
 
-  const fontOptions = ["Pequeno", "Médio", "Grande"];
+  // Pegamos as funções e o tema atual do contexto global
+  const {
+    isLargeText,
+    toggleLargeText,
+    isHighContrast,
+    toggleHighContrast,
+    theme,
+  } = useTheme();
 
-  const handleSelectFont = (size: string) => {
-    setTamanhoFonte(size);
-    setShowFontModal(false);
+  const styles = getStyles(theme); // Estilos dinâmicos
+
+  const handleLogout = () => {
+    Alert.alert("Sair", "Deseja sair?", [
+      { text: "Cancelar", style: "cancel" },
+      { text: "Sair", style: "destructive", onPress: logout },
+    ]);
   };
+
+  const SettingItemSwitch = ({ label, icon, value, onValueChange }: any) => (
+    <View style={styles.itemContainer}>
+      <View style={styles.itemLeft}>
+        <View style={styles.iconBox}>
+          <Feather name={icon} size={24} color={theme.colors.primary} />
+        </View>
+        <Text style={styles.itemText}>{label}</Text>
+      </View>
+      <Switch
+        trackColor={{ false: "#E0E0E0", true: theme.colors.primary }}
+        thumbColor={value ? "#FFF" : "#F4F3F4"}
+        onValueChange={onValueChange}
+        value={value}
+      />
+    </View>
+  );
 
   return (
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Ionicons name="close" size={28} color="#000" />
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={styles.backButton}
+        >
+          <Feather name="arrow-left" size={24} color="#FFF" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Configurações</Text>
-        <View style={{ width: 28 }} />
+        <View style={{ width: 24 }} />
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
-        {/* Card de Acessibilidade */}
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Acessibilidade</Text>
+        <Text style={styles.sectionTitle}>ACESSIBILIDADE</Text>
+        <View style={styles.sectionBox}>
+          <SettingItemSwitch
+            label="Texto Grande"
+            icon="type"
+            value={isLargeText}
+            onValueChange={toggleLargeText}
+          />
+          <View style={styles.divider} />
+          <SettingItemSwitch
+            label="Alto Contraste"
+            icon="eye"
+            value={isHighContrast}
+            onValueChange={toggleHighContrast}
+          />
+        </View>
 
-          {/* Alto Contraste */}
-          <View style={styles.option}>
-            <Text style={styles.optionText}>Alto contraste</Text>
-            <Switch
-              value={altoContraste}
-              onValueChange={setAltoContraste}
-              trackColor={{ false: "#D1D5DB", true: "#003366" }}
-              thumbColor={altoContraste ? "#ffffff" : "#F3F4F6"}
-              ios_backgroundColor="#D1D5DB"
-            />
-          </View>
-
-          {/* Tamanho da Fonte */}
-          <View style={styles.option}>
-            <Text style={styles.optionText}>Tamanho da Fonte</Text>
-            <TouchableOpacity
-              style={styles.dropdown}
-              onPress={() => setShowFontModal(true)}
+        <Text style={styles.sectionTitle}>CONTA</Text>
+        <View style={styles.sectionBox}>
+          <View
+            style={{
+              padding: 16,
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 10,
+            }}
+          >
+            <View
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: 20,
+                backgroundColor: theme.colors.primary,
+                justifyContent: "center",
+                alignItems: "center",
+              }}
             >
-              <Text style={styles.dropdownText}>{tamanhoFonte}</Text>
-              <Ionicons name="chevron-down" size={18} color="#003366" />
-            </TouchableOpacity>
+              <Text style={{ color: "#FFF", fontWeight: "bold", fontSize: 18 }}>
+                {user?.name?.charAt(0)}
+              </Text>
+            </View>
+            <View>
+              <Text style={[styles.itemText, { fontWeight: "bold" }]}>
+                {user?.name}
+              </Text>
+              <Text
+                style={[
+                  styles.itemText,
+                  {
+                    fontSize: theme.sizes.small,
+                    color: theme.colors.textSecondary,
+                  },
+                ]}
+              >
+                {user?.email}
+              </Text>
+            </View>
           </View>
         </View>
+
+        <View style={[styles.sectionBox, { marginTop: 20 }]}>
+          <TouchableOpacity style={styles.itemContainer} onPress={handleLogout}>
+            <View style={styles.itemLeft}>
+              <View style={[styles.iconBox, { backgroundColor: "#FFEBEE" }]}>
+                <Feather name="log-out" size={24} color="#D32F2F" />
+              </View>
+              <Text style={[styles.itemText, { color: "#D32F2F" }]}>
+                Sair da Conta
+              </Text>
+            </View>
+          </TouchableOpacity>
+        </View>
       </ScrollView>
-
-      {/* Botões Inferiores */}
-      <View style={styles.bottomButtons}>
-        <TouchableOpacity style={styles.redefinirButton}>
-          <Text style={styles.redefinirButtonText}>Redefinir senha</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.sairButton} onPress={logout}>
-          <Text style={styles.sairButtonText}>Sair da Conta</Text>
-          <Ionicons name="exit-outline" size={22} color="#D31C30" />
-        </TouchableOpacity>
-      </View>
-
-      {/*Seleção de Tamanho da Fonte */}
-      <Modal
-        visible={showFontModal}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={() => setShowFontModal(false)}
-      >
-        <TouchableOpacity
-          style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={() => setShowFontModal(false)}
-        >
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Tamanho da Fonte</Text>
-            {fontOptions.map((size) => (
-              <TouchableOpacity
-                key={size}
-                style={[
-                  styles.modalOption,
-                  tamanhoFonte === size && styles.modalOptionSelected,
-                ]}
-                onPress={() => handleSelectFont(size)}
-              >
-                <Text
-                  style={[
-                    styles.modalOptionText,
-                    tamanhoFonte === size && styles.modalOptionTextSelected,
-                  ]}
-                >
-                  {size}
-                </Text>
-                {tamanhoFonte === size && (
-                  <Ionicons name="checkmark" size={20} color="#003366" />
-                )}
-              </TouchableOpacity>
-            ))}
-          </View>
-        </TouchableOpacity>
-      </Modal>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#fff",
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 20,
-    paddingTop: 50,
-    paddingBottom: 20,
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: "600",
-    color: "#000",
-  },
-  content: {
-    padding: 20,
-    paddingBottom: 200,
-  },
-  card: {
-    backgroundColor: "#D6E4F5",
-    borderRadius: 20,
-    padding: 20,
-    marginTop: 10,
-  },
-  cardTitle: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: "#003366",
-    marginBottom: 20,
-  },
-  option: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingVertical: 12,
-  },
-  optionText: {
-    fontSize: 16,
-    color: "#000",
-  },
-  dropdown: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#C8D9EC",
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
-    gap: 8,
-  },
-  dropdownText: {
-    fontSize: 14,
-    color: "#003366",
-    fontWeight: "500",
-  },
-  bottomButtons: {
-    position: "absolute",
-    bottom: 40,
-    left: 20,
-    right: 20,
-    gap: 12,
-  },
-  redefinirButton: {
-    backgroundColor: "#fff",
-    borderWidth: 2,
-    borderColor: "#4A90E2",
-    borderRadius: 25,
-    paddingVertical: 15,
-    alignItems: "center",
-  },
-  redefinirButtonText: {
-    color: "#4A90E2",
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  sairButton: {
-    backgroundColor: "#FFE5E5",
-    borderWidth: 2,
-    borderColor: "#D31C30",
-    borderRadius: 25,
-    paddingVertical: 15,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-  },
-  sairButtonText: {
-    color: "#D31C30",
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  // Seleção de tamanho da fonte
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  modalContent: {
-    backgroundColor: "#fff",
-    borderRadius: 16,
-    padding: 20,
-    width: "80%",
-    maxWidth: 300,
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: "#003366",
-    marginBottom: 15,
-    textAlign: "center",
-  },
-  modalOption: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingVertical: 15,
-    paddingHorizontal: 10,
-    borderRadius: 8,
-    marginBottom: 8,
-  },
-  modalOptionSelected: {
-    backgroundColor: "#D6E4F5",
-  },
-  modalOptionText: {
-    fontSize: 16,
-    color: "#333",
-  },
-  modalOptionTextSelected: {
-    color: "#003366",
-    fontWeight: "600",
-  },
-});
+// Função que gera os estilos baseada no tema atual
+const getStyles = (theme: any) =>
+  StyleSheet.create({
+    container: { flex: 1, backgroundColor: theme.colors.background },
+    header: {
+      backgroundColor: "#1650A7", // Header mantém a cor da marca
+      paddingTop: 50,
+      paddingBottom: 15,
+      paddingHorizontal: 20,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      elevation: 4,
+    },
+    headerTitle: { color: "#FFF", fontSize: 20, fontWeight: "bold" },
+    backButton: { padding: 5 },
+    content: { padding: 20 },
+
+    sectionTitle: {
+      fontSize: theme.sizes.small, // Usa tamanho dinâmico
+      fontWeight: "bold",
+      color: theme.colors.textSecondary, // Usa cor dinâmica
+      marginBottom: 8,
+      marginLeft: 4,
+      marginTop: 10,
+    },
+    sectionBox: {
+      backgroundColor: theme.colors.card, // Usa cor dinâmica
+      borderRadius: 12,
+      overflow: "hidden",
+      elevation: 1,
+      borderWidth: 1,
+      borderColor: theme.colors.border, // Borda para alto contraste
+    },
+
+    itemContainer: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingVertical: 16,
+      paddingHorizontal: 16,
+    },
+    itemLeft: { flexDirection: "row", alignItems: "center", gap: 12 },
+    iconBox: {
+      width: 35,
+      height: 35,
+      borderRadius: 8,
+      backgroundColor: theme.colors.tint,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    itemText: {
+      fontSize: theme.sizes.body, // USA TAMANHO DINÂMICO
+      color: theme.colors.text, // USA COR DINÂMICA
+      fontWeight: "500",
+    },
+    divider: {
+      height: 1,
+      backgroundColor: theme.colors.border,
+      marginLeft: 60,
+    },
+  });

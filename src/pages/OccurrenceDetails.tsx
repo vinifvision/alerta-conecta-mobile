@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   View,
   Text,
@@ -8,113 +8,82 @@ import {
   ActivityIndicator,
   Alert,
 } from "react-native";
-import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
+import { useNavigation, useRoute } from "@react-navigation/native";
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import MapView, { Marker } from "react-native-maps";
-
-// Importar da Nova Arquitetura
-import { occurrenceService } from "../services/occurrenceService"; // Serviço
-import { Occurrence } from "../types"; // Tipos centrais
-
-// Tipo dos parâmetros da rota (o ID que vem da Home)
-type ParamList = {
-  OccurrenceDetails: { id: number };
-};
+import { useTheme } from "../contexts/ThemeContext"; // Importar Tema
+import { occurrenceService } from "../services/occurrenceService";
+import { Occurrence } from "../types";
 
 export default function OccurrenceDetails() {
   const navigation = useNavigation();
-  const route = useRoute<RouteProp<ParamList, "OccurrenceDetails">>();
-  const { id } = route.params; // Pega o ID passado
+  const route = useRoute<any>();
+  const { id } = route.params;
+  const { theme } = useTheme(); // Hook do tema
+  const styles = useMemo(() => createStyles(theme), [theme]); // Estilos dinâmicos
 
   const [occurrence, setOccurrence] = useState<Occurrence | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // --- Busca de Dados (Via Serviço) ---
   useEffect(() => {
     const loadDetails = async () => {
       try {
-        // O serviço decide se pega do Mock ou da API
         const data = await occurrenceService.getById(id);
-
-        if (data) {
-          setOccurrence(data);
-        } else {
+        if (data) setOccurrence(data);
+        else {
           Alert.alert("Erro", "Ocorrência não encontrada.");
           navigation.goBack();
         }
       } catch (error) {
-        console.error(error);
-        Alert.alert("Erro", "Falha ao carregar detalhes.");
+        Alert.alert("Erro", "Falha ao carregar.");
         navigation.goBack();
       } finally {
         setLoading(false);
       }
     };
-
     loadDetails();
   }, [id]);
 
-  if (loading) {
+  if (loading)
     return (
       <View style={styles.loading}>
-        <ActivityIndicator size="large" color="#1650A7" />
-        <Text style={{ marginTop: 10, color: "#666" }}>
-          Carregando detalhes...
-        </Text>
+        <ActivityIndicator size="large" color={theme.colors.primary} />
       </View>
     );
-  }
-
   if (!occurrence) return null;
 
-  // Helpers de UI
-  const getStatusColor = (status: string) => {
-    if (status.includes("Em")) return "#FF8C00";
-    if (status.includes("Encerrada")) return "#4CAF50";
-    return "#9E9E9E";
-  };
-
-  const dateObj = new Date(occurrence.date);
-  const formattedDate = `${dateObj.toLocaleDateString("pt-BR")} às ${dateObj.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`;
-
-  // Coordenadas padrão (Recife) se não vierem na ocorrência
   const initialRegion = {
-    latitude: occurrence.lat || -8.047562,
-    longitude: occurrence.lng || -34.877001,
+    latitude: occurrence.lat || -8.047,
+    longitude: occurrence.lng || -34.877,
     latitudeDelta: 0.01,
     longitudeDelta: 0.01,
   };
 
   return (
     <View style={styles.container}>
-      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity
           onPress={() => navigation.goBack()}
           style={styles.backButton}
         >
-          <Feather name="arrow-left" size={24} color="#FFF" />
+          <Feather name="arrow-left" size={24} color={theme.colors.white} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Detalhes</Text>
-        <View style={{ width: 24 }} />
+        <TouchableOpacity style={styles.backButton}>
+          <Feather name="edit-2" size={24} color={theme.colors.white} />
+        </TouchableOpacity>
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
-        {/* Mapa */}
         <View style={styles.mapContainer}>
           <MapView style={styles.map} initialRegion={initialRegion}>
-            <Marker
-              coordinate={{
-                latitude: initialRegion.latitude,
-                longitude: initialRegion.longitude,
-              }}
-            />
+            <Marker coordinate={initialRegion} />
           </MapView>
           <View style={styles.addressBar}>
             <MaterialCommunityIcons
               name="map-marker"
               size={16}
-              color="#1650A7"
+              color={theme.colors.primary}
             />
             <Text style={styles.addressText} numberOfLines={1}>
               {occurrence.address || "Endereço não disponível"}
@@ -122,7 +91,6 @@ export default function OccurrenceDetails() {
           </View>
         </View>
 
-        {/* Card Principal */}
         <View style={styles.mainCard}>
           <Text style={styles.occurrenceTitle}>
             {occurrence.titule || `Ocorrência #${occurrence.id}`}
@@ -131,56 +99,44 @@ export default function OccurrenceDetails() {
             <Text style={styles.occurrenceType}>
               {occurrence.nome_tipo || `Tipo ${occurrence.type}`}
             </Text>
-            <View
-              style={[
-                styles.statusBadge,
-                { backgroundColor: getStatusColor(occurrence.status) },
-              ]}
-            >
-              <Text style={styles.statusText}>
-                {occurrence.status.replace("_", " ")}
-              </Text>
+            <View style={[styles.statusBadge]}>
+              <Text style={styles.statusText}>{occurrence.status}</Text>
             </View>
           </View>
         </View>
 
-        {/* Descrição e Vítimas */}
         <View style={styles.infoCard}>
           <Text style={styles.sectionTitle}>Descrição</Text>
           <Text style={styles.descriptionText}>
             {occurrence.details || "Sem descrição."}
           </Text>
-
           <View style={styles.divider} />
-
-          <Text style={styles.sectionTitle}>Vítimas / Envolvidos</Text>
+          <Text style={styles.sectionTitle}>Vítimas</Text>
           <Text style={styles.descriptionText}>
-            {occurrence.victims || "Nenhuma vítima informada."}
+            {occurrence.victims || "Nenhuma."}
           </Text>
         </View>
 
-        {/* Grid Data e Prioridade */}
         <View style={styles.grid}>
           <View style={styles.smallCard}>
-            <Feather name="calendar" size={20} color="#666" />
+            <Feather
+              name="calendar"
+              size={20}
+              color={theme.colors.textSecondary}
+            />
             <Text style={styles.label}>Data</Text>
-            <Text style={styles.value}>{formattedDate}</Text>
+            <Text style={styles.value}>
+              {new Date(occurrence.date).toLocaleDateString()}
+            </Text>
           </View>
           <View style={styles.smallCard}>
-            <Feather name="alert-triangle" size={20} color="#666" />
+            <Feather
+              name="alert-triangle"
+              size={20}
+              color={theme.colors.textSecondary}
+            />
             <Text style={styles.label}>Prioridade</Text>
-            <Text
-              style={[
-                styles.value,
-                {
-                  color:
-                    occurrence.priority === "Alta" ||
-                    occurrence.priority === "Critica"
-                      ? "#D32F2F"
-                      : "#333",
-                },
-              ]}
-            >
+            <Text style={[styles.value, { color: theme.colors.primary }]}>
               {occurrence.priority}
             </Text>
           </View>
@@ -190,95 +146,132 @@ export default function OccurrenceDetails() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#F5F5F5" },
-  loading: { flex: 1, justifyContent: "center", alignItems: "center" },
-  header: {
-    backgroundColor: "#1650A7",
-    paddingTop: 50,
-    paddingBottom: 15,
-    paddingHorizontal: 20,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  headerTitle: { color: "#FFF", fontSize: 18, fontWeight: "bold" },
-  backButton: { padding: 5 },
-  content: { padding: 20, paddingBottom: 40 },
-
-  mapContainer: {
-    height: 200,
-    borderRadius: 12,
-    overflow: "hidden",
-    marginBottom: 20,
-    backgroundColor: "#DDD",
-  },
-  map: { width: "100%", height: "100%" },
-  addressBar: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: "rgba(255,255,255,0.9)",
-    padding: 10,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-  addressText: { fontSize: 12, color: "#333", flex: 1 },
-
-  mainCard: {
-    backgroundColor: "#FFF",
-    padding: 20,
-    borderRadius: 12,
-    marginBottom: 15,
-    elevation: 2,
-  },
-  occurrenceTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "#333",
-    marginBottom: 5,
-  },
-  rowBetween: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  occurrenceType: { fontSize: 14, color: "#666" },
-  statusBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
-  statusText: { color: "#FFF", fontSize: 10, fontWeight: "bold" },
-
-  infoCard: {
-    backgroundColor: "#FFF",
-    padding: 20,
-    borderRadius: 12,
-    marginBottom: 15,
-    elevation: 2,
-  },
-  sectionTitle: {
-    fontSize: 14,
-    fontWeight: "bold",
-    color: "#333",
-    marginBottom: 8,
-  },
-  descriptionText: { fontSize: 14, color: "#555", lineHeight: 20 },
-  divider: { height: 1, backgroundColor: "#EEE", marginVertical: 15 },
-
-  grid: { flexDirection: "row", gap: 15 },
-  smallCard: {
-    flex: 1,
-    backgroundColor: "#FFF",
-    padding: 15,
-    borderRadius: 12,
-    alignItems: "center",
-    elevation: 2,
-  },
-  label: { fontSize: 12, color: "#999", marginTop: 5, marginBottom: 2 },
-  value: {
-    fontSize: 14,
-    fontWeight: "bold",
-    color: "#333",
-    textAlign: "center",
-  },
-});
+const createStyles = (theme: any) =>
+  StyleSheet.create({
+    container: { flex: 1, backgroundColor: theme.colors.background },
+    loading: { flex: 1, justifyContent: "center", alignItems: "center" },
+    header: {
+      backgroundColor: theme.colors.primary,
+      paddingTop: 50,
+      paddingBottom: 15,
+      paddingHorizontal: 20,
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+    },
+    headerTitle: {
+      color: theme.colors.white,
+      fontSize: 18 * theme.fontScale,
+      fontWeight: "bold",
+    },
+    backButton: { padding: 5 },
+    content: { padding: 20, paddingBottom: 40 },
+    mapContainer: {
+      height: 200,
+      borderRadius: 12,
+      overflow: "hidden",
+      marginBottom: 20,
+      backgroundColor: theme.colors.border,
+    },
+    map: { width: "100%", height: "100%" },
+    addressBar: {
+      position: "absolute",
+      bottom: 0,
+      left: 0,
+      right: 0,
+      backgroundColor: theme.colors.card,
+      padding: 10,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      opacity: 0.9,
+    },
+    addressText: {
+      fontSize: 12 * theme.fontScale,
+      color: theme.colors.text,
+      flex: 1,
+    },
+    mainCard: {
+      backgroundColor: theme.colors.card,
+      padding: 20,
+      borderRadius: 12,
+      marginBottom: 15,
+      elevation: 2,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+    },
+    occurrenceTitle: {
+      fontSize: 18 * theme.fontScale,
+      fontWeight: "bold",
+      color: theme.colors.text,
+      marginBottom: 5,
+    },
+    rowBetween: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+    },
+    occurrenceType: {
+      fontSize: 14 * theme.fontScale,
+      color: theme.colors.textSecondary,
+    },
+    statusBadge: {
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      borderRadius: 12,
+      backgroundColor: theme.colors.tint,
+    },
+    statusText: {
+      color: theme.colors.primary,
+      fontSize: 10 * theme.fontScale,
+      fontWeight: "bold",
+    },
+    infoCard: {
+      backgroundColor: theme.colors.card,
+      padding: 20,
+      borderRadius: 12,
+      marginBottom: 15,
+      elevation: 2,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+    },
+    sectionTitle: {
+      fontSize: 14 * theme.fontScale,
+      fontWeight: "bold",
+      color: theme.colors.text,
+      marginBottom: 8,
+    },
+    descriptionText: {
+      fontSize: 14 * theme.fontScale,
+      color: theme.colors.text,
+      lineHeight: 20,
+    },
+    divider: {
+      height: 1,
+      backgroundColor: theme.colors.border,
+      marginVertical: 15,
+    },
+    grid: { flexDirection: "row", gap: 15 },
+    smallCard: {
+      flex: 1,
+      backgroundColor: theme.colors.card,
+      padding: 15,
+      borderRadius: 12,
+      alignItems: "center",
+      elevation: 2,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+    },
+    label: {
+      fontSize: 12 * theme.fontScale,
+      color: theme.colors.textSecondary,
+      marginTop: 5,
+      marginBottom: 2,
+    },
+    value: {
+      fontSize: 14 * theme.fontScale,
+      fontWeight: "bold",
+      color: theme.colors.text,
+      textAlign: "center",
+    },
+  });

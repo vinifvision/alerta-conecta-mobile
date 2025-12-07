@@ -3,11 +3,12 @@ import { ActivityIndicator, View } from "react-native";
 import { NavigationContainer } from "@react-navigation/native";
 import { createStackNavigator } from "@react-navigation/stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
-import { Ionicons } from "@expo/vector-icons"; // Ícones do Expo
+import { Ionicons } from "@expo/vector-icons";
 
 import { AuthProvider, useAuth } from "./src/contexts/AuthContext";
+import { ThemeProvider } from "./src/contexts/ThemeContext";
 
-// Telas
+// Importe TODAS as Telas
 import WelcomeScreen from "./src/pages/Welcome";
 import LoginScreen from "./src/pages/Login";
 import HomeScreen from "./src/pages/Home";
@@ -18,7 +19,7 @@ import SettingsScreen from "./src/pages/Settings";
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
 
-// --- 1. Navegação Interna (Abas) ---
+// --- Navegação Interna (Abas: Home + Perfil) ---
 function AppTabs() {
   return (
     <Tab.Navigator
@@ -27,15 +28,13 @@ function AppTabs() {
         headerShown: false,
         tabBarActiveTintColor: "#1650A7",
         tabBarInactiveTintColor: "gray",
+        tabBarStyle: { height: 60, paddingBottom: 5 },
         tabBarIcon: ({ focused, color, size }) => {
           let iconName: any;
-
-          if (route.name === "Ocorrências") {
+          if (route.name === "Ocorrências")
             iconName = focused ? "list" : "list-outline";
-          } else if (route.name === "Perfil") {
+          else if (route.name === "Perfil")
             iconName = focused ? "person" : "person-outline";
-          }
-
           return <Ionicons name={iconName} size={size} color={color} />;
         },
       })}
@@ -46,7 +45,7 @@ function AppTabs() {
   );
 }
 
-// --- 2. Navegação Principal (Stack) ---
+// --- Navegação Principal (Stack) ---
 function Routes() {
   const { signed, loading } = useAuth();
 
@@ -61,9 +60,11 @@ function Routes() {
   return (
     <Stack.Navigator id="main-stack" screenOptions={{ headerShown: false }}>
       {signed ? (
-        // Se logado, vai para as Abas (Home + Perfil)
+        // --- Rotas Privadas ---
         <>
+          {/* A tela principal contém as abas */}
           <Stack.Screen name="Main" component={AppTabs} />
+          {/* Telas secundárias (ficam sobre as abas) */}
           <Stack.Screen
             name="OccurrenceDetails"
             component={OccurrenceDetails}
@@ -71,7 +72,7 @@ function Routes() {
           <Stack.Screen name="Settings" component={SettingsScreen} />
         </>
       ) : (
-        // Se não logado, vai para fluxo de Auth
+        // --- Rotas Públicas ---
         <>
           <Stack.Screen name="Welcome" component={WelcomeScreen} />
           <Stack.Screen name="Login" component={LoginScreen} />
@@ -85,7 +86,9 @@ export default function App() {
   return (
     <NavigationContainer>
       <AuthProvider>
-        <Routes />
+        <ThemeProvider>
+          <Routes />
+        </ThemeProvider>
       </AuthProvider>
     </NavigationContainer>
   );

@@ -1,71 +1,115 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
+import { useNavigation } from "@react-navigation/native";
+import { Feather } from "@expo/vector-icons";
 import { useAuth } from "../contexts/AuthContext";
-import { useNavigation, NavigationProp } from "@react-navigation/native";
-import { Ionicons } from "@expo/vector-icons";
-
-type RootStackParamList = {
-  Settings: undefined;
-};
+import { useTheme } from "../contexts/ThemeContext";
 
 export default function ProfileScreen() {
-  const { user, logout } = useAuth();
-  const navigation = useNavigation<NavigationProp<RootStackParamList>>();
+  const { user } = useAuth();
+  const navigation = useNavigation();
+  const { theme } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
 
   return (
     <View style={styles.container}>
-      {/* Ícone de Configurações*/}
-      <TouchableOpacity
-        style={styles.settingsButton}
-        onPress={() => navigation.navigate("Settings")}
-      >
-        <Ionicons name="settings-outline" size={28} color="#333" />
-      </TouchableOpacity>
+      <View style={styles.headerTop}>
+        <Text style={styles.headerTitle}>Meu Perfil</Text>
+        <TouchableOpacity
+          style={styles.settingsButton}
+          onPress={() => navigation.navigate("Settings" as never)}
+        >
+          <Feather name="settings" size={24} color={theme.colors.primary} />
+        </TouchableOpacity>
+      </View>
 
       <View style={styles.avatarContainer}>
         <Text style={styles.avatarText}>{user?.name?.charAt(0) || "U"}</Text>
       </View>
-      <Text style={styles.name}>{user?.name}</Text>
-      <Text style={styles.role}>{user?.role}</Text>
+      <Text style={styles.name}>{user?.name || "Usuário"}</Text>
+      <Text style={styles.role}>{user?.role || "Cargo não definido"}</Text>
 
-      <TouchableOpacity style={styles.logoutButton} onPress={logout}>
-        <Text style={styles.logoutText}>Sair da Conta</Text>
-      </TouchableOpacity>
+      <View style={styles.infoContainer}>
+        <Text style={styles.infoLabel}>Email:</Text>
+        <Text style={styles.infoValue}>{user?.email}</Text>
+        <Text style={styles.infoLabel}>CPF:</Text>
+        <Text style={styles.infoValue}>{user?.cpf || "Não informado"}</Text>
+      </View>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#F5F5F5",
-  },
-  settingsButton: {
-    position: "absolute",
-    top: 50,
-    right: 20,
-    padding: 8,
-    borderRadius: 12,
-  },
-  avatarContainer: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: "#1650A7",
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 16,
-  },
-  avatarText: { color: "#FFF", fontSize: 40, fontWeight: "bold" },
-  name: { fontSize: 24, fontWeight: "bold", color: "#333" },
-  role: { fontSize: 16, color: "#666", marginBottom: 32 },
-  logoutButton: {
-    backgroundColor: "#D31C30",
-    paddingHorizontal: 30,
-    paddingVertical: 12,
-    borderRadius: 25,
-  },
-  logoutText: { color: "#FFF", fontSize: 16, fontWeight: "bold" },
-});
+const createStyles = (theme: any) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      alignItems: "center",
+      backgroundColor: theme.colors.background,
+      paddingTop: 50,
+    },
+    headerTop: {
+      flexDirection: "row",
+      width: "100%",
+      justifyContent: "space-between",
+      alignItems: "center",
+      paddingHorizontal: 20,
+      marginBottom: 30,
+    },
+    headerTitle: {
+      fontSize: 24 * theme.fontScale,
+      fontWeight: "bold",
+      color: theme.colors.text,
+    },
+    settingsButton: {
+      padding: 8,
+      backgroundColor: theme.colors.tint,
+      borderRadius: 10,
+    },
+    avatarContainer: {
+      width: 120,
+      height: 120,
+      borderRadius: 60,
+      backgroundColor: theme.colors.primary,
+      justifyContent: "center",
+      alignItems: "center",
+      marginBottom: 16,
+      borderWidth: 4,
+      borderColor: theme.colors.card,
+      elevation: 5,
+    },
+    avatarText: {
+      color: theme.colors.white,
+      fontSize: 48 * theme.fontScale,
+      fontWeight: "bold",
+    },
+    name: {
+      fontSize: 26 * theme.fontScale,
+      fontWeight: "bold",
+      color: theme.colors.text,
+    },
+    role: {
+      fontSize: 18 * theme.fontScale,
+      color: theme.colors.primary,
+      marginBottom: 32,
+      fontWeight: "500",
+    },
+    infoContainer: {
+      width: "90%",
+      backgroundColor: theme.colors.card,
+      padding: 20,
+      borderRadius: 15,
+      elevation: 2,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+    },
+    infoLabel: {
+      color: theme.colors.textSecondary,
+      fontSize: 14 * theme.fontScale,
+      marginTop: 10,
+    },
+    infoValue: {
+      color: theme.colors.text,
+      fontSize: 16 * theme.fontScale,
+      fontWeight: "500",
+    },
+  });
