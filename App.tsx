@@ -1,11 +1,14 @@
+// App.tsx
 import React from "react";
 import { ActivityIndicator, View } from "react-native";
 import { NavigationContainer } from "@react-navigation/native";
 import { createStackNavigator } from "@react-navigation/stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
-import { Ionicons } from "@expo/vector-icons"; // Ícones do Expo
+import { Ionicons } from "@expo/vector-icons";
 
+// Contextos
 import { AuthProvider, useAuth } from "./src/contexts/AuthContext";
+import { ThemeProvider, useTheme } from "./src/contexts/ThemeContext"; // <--- 1. IMPORTAR
 
 // Telas
 import WelcomeScreen from "./src/pages/Welcome";
@@ -14,28 +17,32 @@ import HomeScreen from "./src/pages/Home";
 import ProfileScreen from "./src/pages/Profile";
 import OccurrenceDetails from "./src/pages/OccurrenceDetails";
 import SettingsScreen from "./src/pages/Settings";
+import RegisterOccurrence from "./src/pages/RegisterOccurrence";
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
 
 // --- 1. Navegação Interna (Abas) ---
 function AppTabs() {
+  const { theme } = useTheme(); // <--- 2. USAR TEMA PARA A BARRA
+
   return (
     <Tab.Navigator
       id="AppTabs"
       screenOptions={({ route }) => ({
         headerShown: false,
-        tabBarActiveTintColor: "#1650A7",
+        tabBarActiveTintColor: theme.colors.primary, // Cor dinâmica
         tabBarInactiveTintColor: "gray",
+        tabBarStyle: {
+          backgroundColor: theme.colors.card, // Cor dinâmica
+          borderTopColor: theme.colors.border,
+        },
         tabBarIcon: ({ focused, color, size }) => {
           let iconName: any;
-
-          if (route.name === "Ocorrências") {
+          if (route.name === "Ocorrências")
             iconName = focused ? "list" : "list-outline";
-          } else if (route.name === "Perfil") {
+          else if (route.name === "Perfil")
             iconName = focused ? "person" : "person-outline";
-          }
-
           return <Ionicons name={iconName} size={size} color={color} />;
         },
       })}
@@ -61,17 +68,19 @@ function Routes() {
   return (
     <Stack.Navigator id="main-stack" screenOptions={{ headerShown: false }}>
       {signed ? (
-        // Se logado, vai para as Abas (Home + Perfil)
         <>
           <Stack.Screen name="Main" component={AppTabs} />
           <Stack.Screen
             name="OccurrenceDetails"
             component={OccurrenceDetails}
           />
+          <Stack.Screen
+            name="RegisterOccurrence"
+            component={RegisterOccurrence}
+          />
           <Stack.Screen name="Settings" component={SettingsScreen} />
         </>
       ) : (
-        // Se não logado, vai para fluxo de Auth
         <>
           <Stack.Screen name="Welcome" component={WelcomeScreen} />
           <Stack.Screen name="Login" component={LoginScreen} />
@@ -85,7 +94,10 @@ export default function App() {
   return (
     <NavigationContainer>
       <AuthProvider>
-        <Routes />
+        {/* 3. ENVOLVER TUDO COM THEMEPROVIDER */}
+        <ThemeProvider>
+          <Routes />
+        </ThemeProvider>
       </AuthProvider>
     </NavigationContainer>
   );

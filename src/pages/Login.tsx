@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import {
   View,
   Text,
@@ -12,6 +12,7 @@ import {
   Keyboard,
 } from "react-native";
 import { useAuth } from "../contexts/AuthContext";
+import { useTheme } from "../contexts/ThemeContext";
 
 export default function LoginScreen() {
   const [usuario, setUsuario] = useState("");
@@ -19,11 +20,13 @@ export default function LoginScreen() {
   const { login, loading } = useAuth();
   const [isLocalLoading, setIsLocalLoading] = useState(false);
 
+  const { theme } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
   async function handleLogin() {
     if (!usuario || !senha) {
       return Alert.alert("Atenção", "Preencha usuário e senha.");
     }
-
     setIsLocalLoading(true);
     try {
       await login(usuario, senha);
@@ -41,6 +44,7 @@ export default function LoginScreen() {
           <Image
             source={require("../assets/alertaconecta-logo.png")}
             style={styles.logo}
+            resizeMode="contain"
           />
         </View>
 
@@ -51,21 +55,24 @@ export default function LoginScreen() {
 
         <TextInput
           style={styles.input}
-          placeholder="Usuário (CPF)"
-          placeholderTextColor="#BDBDBD"
+          placeholder="Usuário"
+          placeholderTextColor={theme.colors.textSecondary}
           value={usuario}
           onChangeText={setUsuario}
           autoCapitalize="none"
-          keyboardType="numeric"
         />
         <TextInput
           style={styles.input}
           placeholder="Senha"
-          placeholderTextColor="#BDBDBD"
+          placeholderTextColor={theme.colors.textSecondary}
           value={senha}
           onChangeText={setSenha}
           secureTextEntry
         />
+
+        <TouchableOpacity style={{ alignSelf: "flex-end", marginRight: "10%" }}>
+          <Text style={styles.forgot}>Esqueceu a senha?</Text>
+        </TouchableOpacity>
 
         <TouchableOpacity
           style={styles.loginButton}
@@ -73,7 +80,7 @@ export default function LoginScreen() {
           disabled={isLocalLoading || loading}
         >
           {isLocalLoading ? (
-            <ActivityIndicator color="#FFF" />
+            <ActivityIndicator color={theme.colors.white} />
           ) : (
             <Text style={styles.loginButtonText}>Entrar</Text>
           )}
@@ -83,39 +90,60 @@ export default function LoginScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#fff",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  logoContainer: { alignItems: "center", marginBottom: 40 },
-  logo: { width: 117, height: 171, marginBottom: 10 },
-  loginContainer: { alignItems: "flex-start", width: "80%", marginBottom: 30 },
-  loginTitle: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: "#003366",
-    marginBottom: 5,
-  },
-  loginSubtitle: { fontSize: 20, color: "#222" },
-  input: {
-    width: "85%",
-    height: 50,
-    backgroundColor: "#ededed",
-    borderRadius: 30,
-    paddingHorizontal: 20,
-    fontSize: 18,
-    marginBottom: 15,
-    color: "#222",
-  },
-  loginButton: {
-    backgroundColor: "#D31C30",
-    paddingVertical: 15,
-    paddingHorizontal: 110,
-    borderRadius: 50,
-    marginTop: 10,
-  },
-  loginButtonText: { color: "#fff", fontSize: 18, fontWeight: "500" },
-});
+const createStyles = (theme: any) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: theme.colors.background,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    logoContainer: { alignItems: "center", marginBottom: 40 },
+    logo: { width: 117, height: 171, marginBottom: 10 },
+    loginContainer: {
+      alignItems: "flex-start",
+      width: "80%",
+      marginBottom: 30,
+    },
+    loginTitle: {
+      fontSize: 24 * theme.fontScale,
+      fontWeight: "bold",
+      color: theme.colors.primary,
+      marginBottom: 5,
+    },
+    loginSubtitle: { fontSize: 20 * theme.fontScale, color: theme.colors.text },
+    input: {
+      width: "85%",
+      height: 50,
+      backgroundColor: theme.colors.card, // Usa card para input
+      borderRadius: 30,
+      paddingHorizontal: 20,
+      fontSize: 18 * theme.fontScale,
+      marginBottom: 15,
+      color: theme.colors.text,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+    },
+    forgot: {
+      color: theme.colors.primary,
+      fontSize: 15 * theme.fontScale,
+      fontWeight: "500",
+      marginBottom: 25,
+    },
+    loginButton: {
+      backgroundColor: theme.colors.primary,
+      paddingVertical: 15,
+      paddingHorizontal: 110,
+      borderRadius: 50,
+      marginTop: 10,
+      width: "85%",
+      alignItems: "center",
+      borderWidth: theme.colors.border === "#FFFFFF" ? 1 : 0,
+      borderColor: theme.colors.white,
+    },
+    loginButtonText: {
+      color: theme.colors.white,
+      fontSize: 18 * theme.fontScale,
+      fontWeight: "500",
+    },
+  });
