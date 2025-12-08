@@ -55,7 +55,7 @@ export default function LoginScreen() {
 
         <TextInput
           style={styles.input}
-          placeholder="Usuário"
+          placeholder="CPF (sem pontos ou traços)"
           placeholderTextColor={theme.colors.textSecondary}
           value={usuario}
           onChangeText={setUsuario}

@@ -1,482 +1,341 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useMemo } from "react";
 import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
   TextInput,
   TouchableOpacity,
-  ActivityIndicator,
+  ScrollView,
   Alert,
-  Modal,
-  FlatList,
-  Platform,
-  KeyboardAvoidingView,
+  ActivityIndicator,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
+import { Picker } from "@react-native-picker/picker";
 import { Feather } from "@expo/vector-icons";
-// import { toast } from "sonner";
-
-// Imports da Arquitetura
+import * as Location from "expo-location"; // OBRIGATÓRIO: npx expo install expo-location
+import { useTheme } from "../contexts/ThemeContext";
 import { occurrenceService } from "../services/occurrenceService";
-import { FilterOption, FormOptionsData, OccurrencePriority } from "../types";
+import { OccurrencePriority } from "../types";
 
 export default function RegisterOccurrence() {
   const navigation = useNavigation();
+  const { theme } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
 
-  // --- Estados de Controle ---
-  const [loadingOptions, setLoadingOptions] = useState(true);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [options, setOptions] = useState<FormOptionsData>({
-    types: [],
-    subTypes: {},
-    priorities: [],
-  });
+  const [loading, setLoading] = useState(false);
+  const [gpsLoading, setGpsLoading] = useState(false);
 
-  // --- Estados do Formulário ---
-  const [type, setType] = useState<FilterOption | null>(null);
-  const [subType, setSubType] = useState<FilterOption | null>(null);
-  const [date, setDate] = useState(""); // DD/MM/AAAA
-  const [time, setTime] = useState(""); // HH:MM
-  const [priority, setPriority] = useState<FilterOption | null>(null);
-  const [victims, setVictims] = useState("");
-  const [details, setDetails] = useState("");
+  // Estados do Formulário
+  const [titulo, setTitulo] = useState("");
+  const [detalhes, setDetalhes] = useState("");
+  const [envolvidos, setEnvolvidos] = useState("");
+  const [prioridade, setPrioridade] = useState<OccurrencePriority>("Baixa");
+  const [tipoId, setTipoId] = useState("1");
+  
+  // Endereço Visual (Texto)
+  const [rua, setRua] = useState("");
+  const [numero, setNumero] = useState("");
+  const [complemento, setComplemento] = useState("");
+  const [bairroId, setBairroId] = useState("1"); 
 
-  // Endereço (Backend exige separado)
-  const [street, setStreet] = useState("");
-  const [number, setNumber] = useState("");
-  const [complement, setComplement] = useState("");
-  const [districtId, setDistrictId] = useState(""); // ID do bairro (inteiro)
+  // Coordenadas (Invisíveis ou visíveis se quiser debug)
+  const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
 
-  // --- Estados de Modal (Selects) ---
-  const [modalVisible, setModalVisible] = useState(false);
-  const [modalType, setModalType] = useState<
-    "type" | "subtype" | "priority" | null
-  >(null);
-
-  // 1. Carregar Opções ao Iniciar
-  useEffect(() => {
-    const loadOptions = async () => {
-      try {
-        const data = await occurrenceService.getFormOptions();
-        setOptions(data);
-
-        // Preenche data/hora atuais
-        const now = new Date();
-        setDate(now.toLocaleDateString("pt-BR"));
-        setTime(
-          now.toLocaleTimeString("pt-BR", {
-            hour: "2-digit",
-            minute: "2-digit",
-          }),
-        );
-      } catch (error) {
-        Alert.alert(
-          "Erro",
-          "Não foi possível carregar as opções do formulário.",
-        );
-      } finally {
-        setLoadingOptions(false);
+  // ---------------------------------------------------------
+  // 1. PEGAR LOCALIZAÇÃO ATUAL (GPS -> ENDEREÇO + LAT/LNG)
+  // ---------------------------------------------------------
+  async function handleGetGpsLocation() {
+    setGpsLoading(true);
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert("Permissão negada", "Habilite a localização nas configurações.");
+        return;
       }
-    };
-    loadOptions();
-  }, []);
 
-  // Resetar subtipo quando trocar o tipo
-  useEffect(() => {
-    setSubType(null);
-  }, [type]);
+      // Pega posição precisa
+      const location = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
+      const { latitude, longitude } = location.coords;
 
-  // --- Máscaras ---
-  const handleDateChange = (text: string) => {
-    let clean = text.replace(/\D/g, "");
-    if (clean.length > 8) clean = clean.substring(0, 8);
-    let formatted = clean;
-    if (clean.length > 2) formatted = `${clean.slice(0, 2)}/${clean.slice(2)}`;
-    if (clean.length > 4)
-      formatted = `${formatted.slice(0, 5)}/${clean.slice(5)}`;
-    setDate(formatted);
-  };
+      // Salva coordenadas
+      setCoords({ lat: latitude, lng: longitude });
 
-  const handleTimeChange = (text: string) => {
-    let clean = text.replace(/\D/g, "");
-    if (clean.length > 4) clean = clean.substring(0, 4);
-    let formatted = clean;
-    if (clean.length > 2) formatted = `${clean.slice(0, 2)}:${clean.slice(2)}`;
-    setTime(formatted);
-  };
+      // Converte para Endereço (Reverse Geocode)
+      const addressResponse = await Location.reverseGeocodeAsync({ latitude, longitude });
 
-  // --- Envio do Formulário ---
-  const handleSubmit = async () => {
-    // Validação Básica
-    if (
-      !type ||
-      !subType ||
-      !priority ||
-      date.length < 10 ||
-      time.length < 5 ||
-      !street ||
-      !number ||
-      !districtId
-    ) {
-      Alert.alert(
-        "Campos Obrigatórios",
-        "Preencha Tipo, Subtipo, Data, Hora, Prioridade e Endereço (Rua, Nº, Bairro ID).",
-      );
-      return;
+      if (addressResponse.length > 0) {
+        const addr = addressResponse[0];
+        setRua(addr.street || ""); 
+        setNumero(addr.streetNumber || "");
+        // Nota: O bairro (district) vem como texto, mas seu backend pede ID.
+        // O usuário precisará confirmar o bairro no Picker manualmente por enquanto.
+        Alert.alert("Localização Encontrada", `Endereço preenchido: ${addr.street}, ${addr.streetNumber}`);
+      }
+    } catch (error) {
+      Alert.alert("Erro no GPS", "Não foi possível obter sua localização.");
+      console.log(error);
+    } finally {
+      setGpsLoading(false);
+    }
+  }
+
+  // ---------------------------------------------------------
+  // 2. ENVIAR FORMULÁRIO (ENDEREÇO DIGITADO -> LAT/LNG)
+  // ---------------------------------------------------------
+  async function handleRegister() {
+    if (!titulo || !rua || !numero) {
+      return Alert.alert("Erro", "Preencha os campos obrigatórios.");
     }
 
-    setIsSubmitting(true);
-
+    setLoading(true);
     try {
-      // Formata Data para ISO (yyyy-MM-ddTHH:mm:ss) esperado pelo Java
-      const [day, month, year] = date.split("/");
-      const isoDate = `${year}-${month}-${day}T${time}:00`;
+      let finalLat = coords?.lat;
+      let finalLng = coords?.lng;
 
-      // Monta o Payload exato para o Backend Java
-      const payload = {
-        titule: subType.label, // Java: getTitule()
-        date: isoDate, // Java: getDate()
-        victims: victims,
-        details: details,
-        priority: priority.label as OccurrencePriority, // Java: Enum valueOf
+      // Se não temos coordenadas do GPS (o usuário digitou tudo), tentamos converter o endereço em Lat/Lng
+      if (!finalLat || !finalLng) {
+        try {
+          const fullAddress = `${rua}, ${numero}, Pernambuco, Brasil`; // Melhora a precisão
+          const geocodeResult = await Location.geocodeAsync(fullAddress);
+          
+          if (geocodeResult.length > 0) {
+            finalLat = geocodeResult[0].latitude;
+            finalLng = geocodeResult[0].longitude;
+          }
+        } catch (geoError) {
+          console.log("Erro ao converter endereço em coordenadas:", geoError);
+          // Não impedimos o cadastro, apenas segue sem coordenadas
+        }
+      }
 
-        // Objeto TYPE aninhado
+      // Monta o objeto conforme o Backend Java espera
+      const novaOcorrencia = {
+        titule: titulo,
+        victims: envolvidos,
+        details: detalhes,
+        priority: prioridade,
+        status: "Em_andamento",
+        date: new Date().toISOString(),
+        
         type: {
-          id: Number(type.value),
-          name: type.label,
-          description: "",
+          id: Number(tipoId),
+          name: "Tipo Selecionado", 
         },
 
-        // Objeto ADDRESS aninhado
         address: {
-          street: street,
-          number: number,
-          complement: complement,
-          idDistrict: Number(districtId), // Java espera int
+          street: rua,
+          number: numero,
+          complement: complemento,
+          idDistrict: Number(bairroId),
         },
+
+        // AGORA SIM: Enviamos as coordenadas preparadas para o novo backend
+        lat: finalLat || null,
+        lng: finalLng || null,
       };
 
-      console.log("Enviando Payload:", JSON.stringify(payload, null, 2));
+      // @ts-ignore
+      await occurrenceService.create(novaOcorrencia);
 
-      // Chama o serviço (que decide se usa Mock ou API real)
-      await occurrenceService.create(payload);
+      Alert.alert("Sucesso", "Ocorrência registrada e geolocalizada!");
+      navigation.goBack();
 
-      Alert.alert("Sucesso", "Ocorrência registrada com sucesso!", [
-        { text: "OK", onPress: () => navigation.goBack() },
-      ]);
     } catch (error: any) {
-      Alert.alert("Erro ao Registrar", error.message || "Falha na conexão.");
+      Alert.alert("Erro", error.message);
     } finally {
-      setIsSubmitting(false);
+      setLoading(false);
     }
-  };
-
-  // --- Renderização do Modal de Seleção ---
-  const renderModal = () => {
-    let listData: FilterOption[] = [];
-    if (modalType === "type") listData = options.types;
-    if (modalType === "priority") listData = options.priorities;
-    if (modalType === "subtype" && type)
-      listData = options.subTypes[String(type.value)] || [];
-
-    return (
-      <Modal visible={modalVisible} transparent animationType="slide">
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Selecione uma opção</Text>
-              <TouchableOpacity onPress={() => setModalVisible(false)}>
-                <Feather name="x" size={24} color="#333" />
-              </TouchableOpacity>
-            </View>
-            <FlatList
-              data={listData}
-              keyExtractor={(item) => String(item.value)}
-              renderItem={({ item }) => (
-                <TouchableOpacity
-                  style={styles.modalItem}
-                  onPress={() => {
-                    if (modalType === "type") setType(item);
-                    if (modalType === "subtype") setSubType(item);
-                    if (modalType === "priority") setPriority(item);
-                    setModalVisible(false);
-                  }}
-                >
-                  <Text style={styles.modalItemText}>{item.label}</Text>
-                </TouchableOpacity>
-              )}
-            />
-          </View>
-        </View>
-      </Modal>
-    );
-  };
-
-  // Helper para renderizar Inputs de Seleção
-  const renderSelectInput = (
-    label: string,
-    value: string | undefined,
-    type: "type" | "subtype" | "priority",
-    disabled = false,
-  ) => (
-    <View style={styles.inputContainer}>
-      <Text style={styles.label}>{label} *</Text>
-      <TouchableOpacity
-        style={[styles.selectBox, disabled && styles.disabledInput]}
-        onPress={() => {
-          if (!disabled) {
-            setModalType(type);
-            setModalVisible(true);
-          }
-        }}
-      >
-        <Text style={[styles.selectText, !value && styles.placeholderText]}>
-          {value || "Selecione..."}
-        </Text>
-        <Feather name="chevron-down" size={20} color="#666" />
-      </TouchableOpacity>
-    </View>
-  );
-
-  if (loadingOptions) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#1650A7" />
-      </View>
-    );
   }
 
   return (
-    <KeyboardAvoidingView
-      style={{ flex: 1 }}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
-    >
-      <View style={styles.container}>
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity
-            onPress={() => navigation.goBack()}
-            style={styles.backButton}
-          >
-            <Feather name="arrow-left" size={24} color="#FFF" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Nova Ocorrência</Text>
-          <View style={{ width: 24 }} />
-        </View>
+    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      <Text style={styles.title}>Nova Ocorrência</Text>
 
-        <ScrollView contentContainerStyle={styles.content}>
-          <Text style={styles.sectionTitle}>Classificação</Text>
-          {renderSelectInput("Tipo", type?.label, "type")}
-          {renderSelectInput("Subtipo", subType?.label, "subtype", !type)}
-          {renderSelectInput("Prioridade", priority?.label, "priority")}
+      <Text style={styles.label}>Título *</Text>
+      <TextInput
+        style={styles.input}
+        placeholder="Ex: Incêndio em loja"
+        placeholderTextColor={theme.colors.textSecondary}
+        value={titulo}
+        onChangeText={setTitulo}
+      />
 
-          <Text style={styles.sectionTitle}>Data e Hora</Text>
-          <View style={styles.row}>
-            <View style={[styles.inputContainer, { flex: 1, marginRight: 10 }]}>
-              <Text style={styles.label}>Data *</Text>
-              <TextInput
-                style={styles.input}
-                value={date}
-                onChangeText={handleDateChange}
-                placeholder="DD/MM/AAAA"
-                keyboardType="numeric"
-                maxLength={10}
-              />
-            </View>
-            <View style={[styles.inputContainer, { flex: 1 }]}>
-              <Text style={styles.label}>Hora *</Text>
-              <TextInput
-                style={styles.input}
-                value={time}
-                onChangeText={handleTimeChange}
-                placeholder="HH:MM"
-                keyboardType="numeric"
-                maxLength={5}
-              />
-            </View>
-          </View>
-
-          <Text style={styles.sectionTitle}>Detalhes</Text>
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Vítimas / Envolvidos</Text>
-            <TextInput
-              style={styles.input}
-              value={victims}
-              onChangeText={setVictims}
-              placeholder="Ex: 2 vítimas leves..."
-            />
-          </View>
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Descrição</Text>
-            <TextInput
-              style={[styles.input, styles.textArea]}
-              value={details}
-              onChangeText={setDetails}
-              placeholder="Descreva a situação..."
-              multiline
-              numberOfLines={4}
-            />
-          </View>
-
-          <Text style={styles.sectionTitle}>Endereço</Text>
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Rua *</Text>
-            <TextInput
-              style={styles.input}
-              value={street}
-              onChangeText={setStreet}
-              placeholder="Nome da rua"
-            />
-          </View>
-          <View style={styles.row}>
-            <View style={[styles.inputContainer, { flex: 1, marginRight: 10 }]}>
-              <Text style={styles.label}>Número *</Text>
-              <TextInput
-                style={styles.input}
-                value={number}
-                onChangeText={setNumber}
-                placeholder="123"
-              />
-            </View>
-            <View style={[styles.inputContainer, { flex: 1 }]}>
-              <Text style={styles.label}>ID Bairro *</Text>
-              <TextInput
-                style={styles.input}
-                value={districtId}
-                onChangeText={setDistrictId}
-                placeholder="Ex: 1"
-                keyboardType="numeric"
-              />
-            </View>
-          </View>
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Complemento</Text>
-            <TextInput
-              style={styles.input}
-              value={complement}
-              onChangeText={setComplement}
-              placeholder="Apto, Bloco..."
-            />
-          </View>
-
-          <TouchableOpacity
-            style={[styles.submitButton, isSubmitting && { opacity: 0.7 }]}
-            onPress={handleSubmit}
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? (
-              <ActivityIndicator color="#FFF" />
-            ) : (
-              <Text style={styles.submitText}>Registrar Ocorrência</Text>
-            )}
-          </TouchableOpacity>
-        </ScrollView>
-
-        {renderModal()}
+      <Text style={styles.label}>Tipo</Text>
+      <View style={styles.pickerContainer}>
+        <Picker
+          selectedValue={tipoId}
+          onValueChange={(itemValue) => setTipoId(itemValue)}
+          style={{ color: theme.colors.text }}
+          dropdownIconColor={theme.colors.text}
+        >
+          <Picker.Item label="Incêndio" value="1" />
+          <Picker.Item label="Resgate" value="2" />
+          <Picker.Item label="Acidente" value="3" />
+          <Picker.Item label="Outro" value="4" />
+        </Picker>
       </View>
-    </KeyboardAvoidingView>
+
+      <Text style={styles.label}>Prioridade</Text>
+      <View style={styles.pickerContainer}>
+        <Picker
+          selectedValue={prioridade}
+          onValueChange={(itemValue) => setPrioridade(itemValue)}
+          style={{ color: theme.colors.text }}
+          dropdownIconColor={theme.colors.text}
+        >
+          <Picker.Item label="Baixa" value="Baixa" />
+          <Picker.Item label="Média" value="Media" />
+          <Picker.Item label="Alta" value="Alta" />
+        </Picker>
+      </View>
+
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 15, marginBottom: 10 }}>
+        <Text style={styles.sectionTitle}>Endereço</Text>
+        
+        {/* BOTÃO INTELIGENTE DE GPS */}
+        <TouchableOpacity 
+          style={[styles.gpsButton, coords ? { backgroundColor: theme.colors.primary } : {}]}
+          onPress={handleGetGpsLocation}
+          disabled={gpsLoading}
+        >
+          {gpsLoading ? (
+            <ActivityIndicator size="small" color="#FFF" />
+          ) : (
+            <>
+              <Feather name="map-pin" size={14} color="#FFF" style={{ marginRight: 5 }} />
+              <Text style={styles.gpsButtonText}>
+                {coords ? "Localização Atualizada" : "Usar Localização Atual"}
+              </Text>
+            </>
+          )}
+        </TouchableOpacity>
+      </View>
+
+      <TextInput
+        style={styles.input}
+        placeholder="Rua *"
+        placeholderTextColor={theme.colors.textSecondary}
+        value={rua}
+        onChangeText={(t) => {
+          setRua(t);
+          if (coords) setCoords(null); // Se o usuário editar a rua manualmente, limpamos a coord antiga para forçar recálculo
+        }}
+      />
+      <View style={styles.row}>
+        <TextInput
+          style={[styles.input, { flex: 1, marginRight: 10 }]}
+          placeholder="Número *"
+          placeholderTextColor={theme.colors.textSecondary}
+          value={numero}
+          onChangeText={setNumero}
+          keyboardType="numeric"
+        />
+        <TextInput
+          style={[styles.input, { flex: 2 }]}
+          placeholder="Complemento"
+          placeholderTextColor={theme.colors.textSecondary}
+          value={complemento}
+          onChangeText={setComplemento}
+        />
+      </View>
+
+      <Text style={styles.label}>Envolvidos / Vítimas</Text>
+      <TextInput
+        style={styles.input}
+        placeholder="Ex: 2 vítimas conscientes"
+        placeholderTextColor={theme.colors.textSecondary}
+        value={envolvidos}
+        onChangeText={setEnvolvidos}
+      />
+
+      <Text style={styles.label}>Detalhes</Text>
+      <TextInput
+        style={[styles.input, { height: 100, textAlignVertical: "top" }]}
+        placeholder="Descreva a situação..."
+        placeholderTextColor={theme.colors.textSecondary}
+        value={detalhes}
+        onChangeText={setDetalhes}
+        multiline
+      />
+
+      <TouchableOpacity
+        style={styles.button}
+        onPress={handleRegister}
+        disabled={loading}
+      >
+        {loading ? (
+          <ActivityIndicator color="#FFF" />
+        ) : (
+          <Text style={styles.buttonText}>Registrar Ocorrência</Text>
+        )}
+      </TouchableOpacity>
+    </ScrollView>
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#F5F5F5" },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#F5F5F5",
-  },
-
-  header: {
-    backgroundColor: "#1650A7",
-    paddingTop: 50,
-    paddingBottom: 15,
-    paddingHorizontal: 20,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    elevation: 4,
-  },
-  headerTitle: { color: "#FFF", fontSize: 18, fontWeight: "bold" },
-  backButton: { padding: 5 },
-
-  content: { padding: 20, paddingBottom: 50 },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: "bold",
-    color: "#1650A7",
-    marginTop: 10,
-    marginBottom: 15,
-  },
-
-  inputContainer: { marginBottom: 15 },
-  label: { fontSize: 14, color: "#333", marginBottom: 5, fontWeight: "500" },
-  input: {
-    backgroundColor: "#FFF",
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    height: 45,
-    borderWidth: 1,
-    borderColor: "#DDD",
-    fontSize: 16,
-    color: "#333",
-  },
-  textArea: { height: 100, textAlignVertical: "top", paddingTop: 10 },
-
-  selectBox: {
-    backgroundColor: "#FFF",
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    height: 45,
-    borderWidth: 1,
-    borderColor: "#DDD",
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  disabledInput: { backgroundColor: "#F0F0F0" },
-  selectText: { fontSize: 16, color: "#333" },
-  placeholderText: { color: "#999" },
-
-  row: { flexDirection: "row" },
-
-  submitButton: {
-    backgroundColor: "#1650A7",
-    borderRadius: 10,
-    height: 50,
-    justifyContent: "center",
-    alignItems: "center",
-    marginTop: 20,
-    marginBottom: 40,
-  },
-  submitText: { color: "#FFF", fontSize: 18, fontWeight: "bold" },
-
-  // Modal
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.5)",
-    justifyContent: "flex-end",
-  },
-  modalContent: {
-    backgroundColor: "#FFF",
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    maxHeight: "60%",
-  },
-  modalHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: "#EEE",
-  },
-  modalTitle: { fontSize: 18, fontWeight: "bold" },
-  modalItem: {
-    padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: "#F5F5F5",
-  },
-  modalItemText: { fontSize: 16, color: "#333" },
-});
+const createStyles = (theme: any) =>
+  StyleSheet.create({
+    container: { flex: 1, backgroundColor: theme.colors.background },
+    content: { padding: 20, paddingBottom: 50 },
+    title: {
+      fontSize: 28 * theme.fontScale,
+      fontWeight: "bold",
+      color: theme.colors.primary,
+      marginBottom: 20,
+      textAlign: "center",
+    },
+    sectionTitle: {
+      fontSize: 20 * theme.fontScale,
+      fontWeight: "600",
+      color: theme.colors.text,
+    },
+    label: {
+      fontSize: 16 * theme.fontScale,
+      color: theme.colors.text,
+      marginBottom: 5,
+      fontWeight: "500",
+    },
+    input: {
+      backgroundColor: theme.colors.card,
+      borderRadius: 8,
+      padding: 12,
+      marginBottom: 15,
+      fontSize: 16 * theme.fontScale,
+      color: theme.colors.text,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+    },
+    pickerContainer: {
+      backgroundColor: theme.colors.card,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      marginBottom: 15,
+    },
+    row: { flexDirection: "row" },
+    button: {
+      backgroundColor: theme.colors.primary,
+      padding: 15,
+      borderRadius: 8,
+      alignItems: "center",
+      marginTop: 20,
+    },
+    buttonText: {
+      color: "#FFF",
+      fontSize: 18 * theme.fontScale,
+      fontWeight: "bold",
+    },
+    gpsButton: {
+      flexDirection: 'row',
+      backgroundColor: '#28a745',
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      borderRadius: 20,
+      alignItems: 'center',
+    },
+    gpsButtonText: {
+      color: '#FFF',
+      fontSize: 12 * theme.fontScale,
+      fontWeight: 'bold',
+    },
+  });
