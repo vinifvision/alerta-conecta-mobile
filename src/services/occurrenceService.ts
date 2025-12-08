@@ -1,97 +1,62 @@
-// src/services/occurrenceService.ts
+import { Occurrence } from "../types";
+import { MOCK_OCCURRENCES } from "./mockData";
 
-import { Occurrence, FormOptionsData } from "../types";
-import { MOCK_OCCURRENCES, MOCK_FORM_OPTIONS } from "./mockData";
-
-// Ajuste para o IP da sua máquina se for rodar local (ex: http://192.168.0.x:8080/database)
-// Ou use a URL de produção se o backend já estiver atualizado lá
+// URL base do banco de dados
 const API_URL =
-  "https://alerta-conecta-backend-production.up.railway.app/database";
-
-const USE_MOCK = true; // <--- Mude para FALSE para testar com Backend
-
-const delay = (ms: number) => new Promise((res) => setTimeout(res, ms));
+  "https://alerta-conecta-backend-production.up.railway.app/database/occurrence";
+const USE_MOCK = true; // Mude para FALSE para usar o Java
 
 export const occurrenceService = {
-  // Listar Todas
-  getAll: async (token?: string): Promise<Occurrence[]> => {
+  // LISTAR TODAS (GET /getall)
+  getAll: async (): Promise<Occurrence[]> => {
     if (USE_MOCK) {
-      await delay(800);
-      return [...MOCK_OCCURRENCES];
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      return MOCK_OCCURRENCES;
     }
 
-    const response = await fetch(`${API_URL}/occurrence/getall`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    if (!response.ok) throw new Error("Erro na API ao buscar ocorrências");
+    const response = await fetch(`${API_URL}/getall`);
+    if (!response.ok) throw new Error("Falha ao buscar ocorrências");
+
     return response.json();
   },
 
-  // Detalhes (Atenção: Backend precisa criar este endpoint!)
-  getById: async (id: number, token?: string): Promise<Occurrence | null> => {
+  // CRIAR NOVA (POST /registry)
+  create: async (occurrence: Partial<Occurrence>): Promise<void> => {
     if (USE_MOCK) {
-      await delay(300);
-      return MOCK_OCCURRENCES.find((o) => o.id === id) || null;
-    }
-
-    try {
-      const response = await fetch(`${API_URL}/occurrence/${id}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!response.ok) throw new Error("Erro na API");
-      return response.json();
-    } catch (e) {
-      console.warn(
-        "Backend provavelmente não tem o endpoint GET /id. Usando lista local como fallback se possível.",
-      );
-      throw e;
-    }
-  },
-
-  // Obter Opções
-  getFormOptions: async (): Promise<FormOptionsData> => {
-    // Retorna Mock por enquanto, pois backend não tem endpoint de opções
-    return MOCK_FORM_OPTIONS;
-  },
-
-  // Criar (Payload Ajustado para o Java)
-  create: async (data: any, token?: string): Promise<void> => {
-    if (USE_MOCK) {
-      await delay(1500);
-      console.log("MOCK CREATE (Payload Java):", JSON.stringify(data, null, 2));
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      console.log("Mock Create:", occurrence);
       return;
     }
 
-    const response = await fetch(`${API_URL}/occurrence/registry`, {
+    // O Java espera a data em formato ISO compatível ou Timestamp
+    // Vamos garantir que a data vá como string ISO
+    const payload = {
+      ...occurrence,
+      date: occurrence.date || new Date().toISOString(),
+    };
+
+    const response = await fetch(`${API_URL}/registry`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify(data),
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
     });
+
+    // O Backend retorna texto puro ou JSON dependendo do sucesso
+    // Vamos ler como texto primeiro para evitar erro de parse
+    const responseText = await response.text();
 
     if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Erro API: ${errorText}`);
+      throw new Error(responseText || "Falha ao registrar ocorrência");
     }
   },
 
-  // Editar (Atenção: Backend precisa criar este endpoint!)
-  update: async (id: number, data: any, token?: string): Promise<void> => {
-    if (USE_MOCK) {
-      await delay(1000);
-      console.log("MOCK UPDATE:", data);
-      return;
-    }
-    const response = await fetch(`${API_URL}/occurrence/${id}`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify(data),
-    });
-    if (!response.ok) throw new Error("Erro ao atualizar");
+  // OBS: O Backend NÃO tem endpoints para getById, update ou delete (exceto arquivar)
+  // Se tentar usar esses métodos abaixo com o backend real, vai dar erro 404/405.
+
+  getById: async (id: number): Promise<Occurrence | undefined> => {
+    // Como o backend não tem GET /:id, simulamos buscando na lista local se necessário
+    // ou retornamos do mock
+    if (USE_MOCK) return MOCK_OCCURRENCES.find((o) => o.id === id);
+    throw new Error("Backend não suporta busca por ID único ainda.");
   },
 };

@@ -6,13 +6,14 @@ import { useAuth } from "../contexts/AuthContext";
 import { useTheme } from "../contexts/ThemeContext";
 
 export default function ProfileScreen() {
-  const { user } = useAuth();
+  const { user } = useAuth(); // Busca os dados do contexto (Mock ou Backend)
   const navigation = useNavigation();
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
   return (
     <View style={styles.container}>
+      {/* Cabeçalho */}
       <View style={styles.headerTop}>
         <Text style={styles.headerTitle}>Meu Perfil</Text>
         <TouchableOpacity
@@ -23,17 +24,28 @@ export default function ProfileScreen() {
         </TouchableOpacity>
       </View>
 
+      {/* Avatar e Nome */}
       <View style={styles.avatarContainer}>
         <Text style={styles.avatarText}>{user?.name?.charAt(0) || "U"}</Text>
       </View>
       <Text style={styles.name}>{user?.name || "Usuário"}</Text>
       <Text style={styles.role}>{user?.role || "Cargo não definido"}</Text>
 
+      {/* Lista de Informações */}
       <View style={styles.infoContainer}>
+        {/* NOVO: Matrícula */}
+        <Text style={styles.infoLabel}>Matrícula:</Text>
+        <Text style={styles.infoValue}>{user?.registry || "N/A"}</Text>
+
         <Text style={styles.infoLabel}>Email:</Text>
         <Text style={styles.infoValue}>{user?.email}</Text>
+
         <Text style={styles.infoLabel}>CPF:</Text>
         <Text style={styles.infoValue}>{user?.cpf || "Não informado"}</Text>
+
+        {/* NOVO: Telefone */}
+        <Text style={styles.infoLabel}>Telefone:</Text>
+        <Text style={styles.infoValue}>{user?.phone || "Não informado"}</Text>
       </View>
     </View>
   );
@@ -101,6 +113,7 @@ const createStyles = (theme: any) =>
       elevation: 2,
       borderWidth: 1,
       borderColor: theme.colors.border,
+      marginBottom: 20, // Margem inferior extra
     },
     infoLabel: {
       color: theme.colors.textSecondary,

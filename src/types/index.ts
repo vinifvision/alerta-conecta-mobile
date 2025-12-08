@@ -1,44 +1,44 @@
 // src/types/index.ts
 
-export type OccurrenceStatus = "Em_andamento" | "Encerrada" | "Cancelada";
-// O Java usa Enum.valueOf, então o texto deve bater exatamente com o Enum do Java (geralmente Capitalized ou Upper)
-export type OccurrencePriority = "Baixa" | "Media" | "Alta" | "Critica";
+export interface User {
+  status: string;
+  name: string;
+  email: string;
+  role: string;
+  cpf: string;
+  registry?: string;
+  phone?: string;
+}
 
-// Estrutura do Endereço (Backend: OccurrenceAddress)
+export type OccurrenceStatus = "Em andamento" | "Encerrada" | "Cancelada";
+export type OccurrencePriority = "Baixa" | "Media" | "Alta";
 export type BackendAddress = {
-  street: string; // Java: getStreet()
-  number: string; // Java: getNumber()
-  complement: string; // Java: getComplement()
-  idDistrict: number; // Java: getIdDistrict()
+  street: string;
+  number: string;
+  complement: string;
+  idDistrict: number;
 };
 
-// Estrutura do Tipo (Backend: OccurrenceType)
 export type BackendType = {
   id: number;
-  name: string; // Java: getName()
-  description?: string; // Java: getDescription()
+  name: string;
+  description?: string;
 };
 
-// Objeto Principal (Backend: Occurrence)
 export type Occurrence = {
   id: number;
-  titule: string | null; // CORREÇÃO: Java espera 'titule'
-  date: string; // CORREÇÃO: Java espera 'date' (Timestamp ISO)
+  titule: string | null;
+  date: string;
   victims: string | null;
-  details: string | null; // Java: getDetails() -> 'details' ou 'detalhe'? Verifiquei: getDetails() mapeia para 'details' ou 'detalhe' dependendo da serialização. Assumindo 'details'.
+  details: string | null;
   status: OccurrenceStatus;
   priority: OccurrencePriority;
-
-  // Objetos Aninhados
   type: BackendType;
-  address?: BackendAddress | null; // Pode vir null no /getall
-
-  // Campos auxiliares front-end (Google Maps)
+  address?: BackendAddress | null;
   lat?: number | null;
   lng?: number | null;
 };
 
-// Tipos para Formulários
 export type FilterOption = { value: string | number; label: string };
 
 export type FormOptionsData = {

@@ -1,62 +1,47 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useMemo } from "react";
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  ActivityIndicator,
-  Alert,
 } from "react-native";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import MapView, { Marker } from "react-native-maps";
-import { useTheme } from "../contexts/ThemeContext"; // Importar Tema
-import { occurrenceService } from "../services/occurrenceService";
+import { useTheme } from "../contexts/ThemeContext";
 import { Occurrence } from "../types";
 
 export default function OccurrenceDetails() {
   const navigation = useNavigation();
   const route = useRoute<any>();
-  const { id } = route.params;
-  const { theme } = useTheme(); // Hook do tema
-  const styles = useMemo(() => createStyles(theme), [theme]); // Estilos dinâmicos
+  const { theme } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
 
-  const [occurrence, setOccurrence] = useState<Occurrence | null>(null);
-  const [loading, setLoading] = useState(true);
+  // CORREÇÃO: Pegamos o objeto inteiro enviado pela Home
+  // Não fazemos mais fetch(id) para evitar erro com backend offline
+  const { occurrenceData } = route.params || {};
 
-  useEffect(() => {
-    const loadDetails = async () => {
-      try {
-        const data = await occurrenceService.getById(id);
-        if (data) setOccurrence(data);
-        else {
-          Alert.alert("Erro", "Ocorrência não encontrada.");
-          navigation.goBack();
-        }
-      } catch (error) {
-        Alert.alert("Erro", "Falha ao carregar.");
-        navigation.goBack();
-      } finally {
-        setLoading(false);
-      }
-    };
-    loadDetails();
-  }, [id]);
+  // Se por acaso vier vazio, volta
+  if (!occurrenceData) {
+    navigation.goBack();
+    return null;
+  }
 
-  if (loading)
-    return (
-      <View style={styles.loading}>
-        <ActivityIndicator size="large" color={theme.colors.primary} />
-      </View>
-    );
-  if (!occurrence) return null;
+  const occurrence: Occurrence = occurrenceData;
 
+  // Usa as coordenadas se existirem, senão usa um padrão (Recife)
   const initialRegion = {
     latitude: occurrence.lat || -8.047,
     longitude: occurrence.lng || -34.877,
     latitudeDelta: 0.01,
     longitudeDelta: 0.01,
+  };
+
+  const formatAddress = () => {
+    if (!occurrence.address) return "Endereço não disponível";
+    // Tenta montar com o que tem
+    return `${occurrence.address.street || "Rua N/A"}, ${occurrence.address.number || "S/N"}`;
   };
 
   return (
@@ -68,16 +53,21 @@ export default function OccurrenceDetails() {
         >
           <Feather name="arrow-left" size={24} color={theme.colors.white} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Detalhes</Text>
-        <TouchableOpacity style={styles.backButton}>
-          <Feather name="edit-2" size={24} color={theme.colors.white} />
-        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Detalhes #{occurrence.id}</Text>
+        <View style={{ width: 24 }} />
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.mapContainer}>
           <MapView style={styles.map} initialRegion={initialRegion}>
-            <Marker coordinate={initialRegion} />
+            {occurrence.lat && occurrence.lng && (
+              <Marker
+                coordinate={{
+                  latitude: occurrence.lat,
+                  longitude: occurrence.lng,
+                }}
+              />
+            )}
           </MapView>
           <View style={styles.addressBar}>
             <MaterialCommunityIcons
@@ -86,20 +76,20 @@ export default function OccurrenceDetails() {
               color={theme.colors.primary}
             />
             <Text style={styles.addressText} numberOfLines={1}>
-              {occurrence.address || "Endereço não disponível"}
+              {formatAddress()}
             </Text>
           </View>
         </View>
 
         <View style={styles.mainCard}>
           <Text style={styles.occurrenceTitle}>
-            {occurrence.titule || `Ocorrência #${occurrence.id}`}
+            {occurrence.titule || "Sem Título"}
           </Text>
           <View style={styles.rowBetween}>
             <Text style={styles.occurrenceType}>
-              {occurrence.nome_tipo || `Tipo ${occurrence.type}`}
+              {occurrence.type?.name || "Tipo não informado"}
             </Text>
-            <View style={[styles.statusBadge]}>
+            <View style={styles.statusBadge}>
               <Text style={styles.statusText}>{occurrence.status}</Text>
             </View>
           </View>
@@ -110,46 +100,24 @@ export default function OccurrenceDetails() {
           <Text style={styles.descriptionText}>
             {occurrence.details || "Sem descrição."}
           </Text>
+
           <View style={styles.divider} />
+
           <Text style={styles.sectionTitle}>Vítimas</Text>
           <Text style={styles.descriptionText}>
-            {occurrence.victims || "Nenhuma."}
+            {occurrence.victims || "Nenhuma informada."}
           </Text>
-        </View>
-
-        <View style={styles.grid}>
-          <View style={styles.smallCard}>
-            <Feather
-              name="calendar"
-              size={20}
-              color={theme.colors.textSecondary}
-            />
-            <Text style={styles.label}>Data</Text>
-            <Text style={styles.value}>
-              {new Date(occurrence.date).toLocaleDateString()}
-            </Text>
-          </View>
-          <View style={styles.smallCard}>
-            <Feather
-              name="alert-triangle"
-              size={20}
-              color={theme.colors.textSecondary}
-            />
-            <Text style={styles.label}>Prioridade</Text>
-            <Text style={[styles.value, { color: theme.colors.primary }]}>
-              {occurrence.priority}
-            </Text>
-          </View>
         </View>
       </ScrollView>
     </View>
   );
 }
 
+// ... (Mantenha os estilos 'createStyles' que já existiam no arquivo, ou copie do anterior se preferir)
+// Vou incluir apenas os estilos essenciais caso tenha perdido
 const createStyles = (theme: any) =>
   StyleSheet.create({
     container: { flex: 1, backgroundColor: theme.colors.background },
-    loading: { flex: 1, justifyContent: "center", alignItems: "center" },
     header: {
       backgroundColor: theme.colors.primary,
       paddingTop: 50,
@@ -250,28 +218,5 @@ const createStyles = (theme: any) =>
       height: 1,
       backgroundColor: theme.colors.border,
       marginVertical: 15,
-    },
-    grid: { flexDirection: "row", gap: 15 },
-    smallCard: {
-      flex: 1,
-      backgroundColor: theme.colors.card,
-      padding: 15,
-      borderRadius: 12,
-      alignItems: "center",
-      elevation: 2,
-      borderWidth: 1,
-      borderColor: theme.colors.border,
-    },
-    label: {
-      fontSize: 12 * theme.fontScale,
-      color: theme.colors.textSecondary,
-      marginTop: 5,
-      marginBottom: 2,
-    },
-    value: {
-      fontSize: 14 * theme.fontScale,
-      fontWeight: "bold",
-      color: theme.colors.text,
-      textAlign: "center",
     },
   });

@@ -1,3 +1,4 @@
+// src/contexts/AuthContext.tsx
 import React, {
   createContext,
   useState,
@@ -25,6 +26,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     async function loadStorageData() {
+      // Apenas carregamos o usuário persistido
       const storedUser = await AsyncStorage.getItem("@App:user");
       if (storedUser) setUser(JSON.parse(storedUser));
       setLoading(false);
@@ -34,13 +36,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const login = async (cpf: string, pass: string) => {
     try {
-      // Chama o serviço (ele cuida se é mock ou real)
       const userData = await authService.login(cpf, pass);
 
       await AsyncStorage.setItem("@App:user", JSON.stringify(userData));
-      if (userData.token)
-        await AsyncStorage.setItem("@App:token", userData.token);
-
       setUser(userData);
     } catch (error) {
       throw error;
@@ -48,7 +46,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const logout = async () => {
-    await AsyncStorage.multiRemove(["@App:user", "@App:token"]);
+    // Removemos apenas o usuário
+    await AsyncStorage.removeItem("@App:user");
     setUser(null);
   };
 

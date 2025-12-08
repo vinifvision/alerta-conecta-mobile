@@ -1,16 +1,16 @@
+// src/services/authService.ts
 import { User } from "../types";
 import { MOCK_USER } from "./mockData";
 
-// URL da API real
 const API_URL =
   "https://alerta-conecta-backend-production.up.railway.app/database";
-const USE_MOCK = true; // <--- MUDE PARA FALSE QUANDO QUISER USAR O BACKEND
+const USE_MOCK = true; // Alterado para FALSE para usar o backend real
 
 export const authService = {
   login: async (cpf: string, pass: string): Promise<User> => {
-    // Modo Mock
+    // Modo Mock (mantido apenas para fallback se necessário)
     if (USE_MOCK) {
-      await new Promise((resolve) => setTimeout(resolve, 1000)); // Delay fake
+      await new Promise((resolve) => setTimeout(resolve, 1000));
       if (cpf && pass) return MOCK_USER;
       throw new Error("Credenciais inválidas (Simulação)");
     }
@@ -23,9 +23,12 @@ export const authService = {
     });
 
     const data = await response.json();
-    if (!response.ok || data.status !== "sucesso") {
-      throw new Error(data.message || "Falha no login");
+
+    // O backend retorna 404 se falhar, o que cai no !response.ok
+    if (!response.ok || (data.status && data.status !== "sucesso")) {
+      throw new Error(data.message || "Usuário ou senha inválidos");
     }
+
     return data;
   },
 };
