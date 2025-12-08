@@ -3,12 +3,11 @@ import { Occurrence, User, FilterOption } from "../types";
 
 // Usuário Mock
 export const MOCK_USER: User = {
-  status: "sucesso",
-  name: "Bombeiro Operacional",
-  email: "operacional@bombeiros.pe.gov.br",
-  role: "Operacional",
+  status: "sucesso (mock)",
+  name: "Desenvolvedor Gerente (Mock)",
+  email: "dev@mock.com",
+  role: "Gerente",
   cpf: "000.000.000-00",
-  token: "123456",
 };
 
 // Lista de Ocorrências Mock
@@ -23,7 +22,7 @@ export const MOCK_OCCURRENCES: Occurrence[] = [
     priority: "Alta",
     victims: "2 inalação de fumaça",
     details: "Fogo no 2º andar. Combate iniciado.",
-    address: "Rua da Aurora, 123, Recife - PE",
+    BackendAddress: "Rua da Aurora, 123, Recife - PE",
     lat: -8.063169,
     lng: -34.871139,
   },
@@ -37,7 +36,7 @@ export const MOCK_OCCURRENCES: Occurrence[] = [
     priority: "Media",
     victims: "1 vítima leve",
     details: "Colisão carro x moto.",
-    address: "BR-101, km 40, Abreu e Lima - PE",
+    BackendAddress: "BR-101, km 40, Abreu e Lima - PE",
     lat: -7.908988,
     lng: -34.902683,
   },
@@ -51,7 +50,7 @@ export const MOCK_OCCURRENCES: Occurrence[] = [
     priority: "Baixa",
     victims: null,
     details: "Alarme falso, cheiro de gás dispersou.",
-    address: "Rua do Sol, Olinda - PE",
+    BackendAddress: "Rua do Sol, Olinda - PE",
   },
   {
     id: 104,
@@ -60,10 +59,10 @@ export const MOCK_OCCURRENCES: Occurrence[] = [
     nome_tipo: "Desastre Natural",
     date: "2025-10-24T18:45:00",
     status: "Em_andamento",
-    priority: "Critica",
+    priority: "Alta",
     victims: "Busca em andamento",
     details: "Risco de novo deslizamento.",
-    address: "Córrego do Jenipapo, Recife - PE",
+    BackendAddress: "Córrego do Jenipapo, Recife - PE",
   },
 ];
 

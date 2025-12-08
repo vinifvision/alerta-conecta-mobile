@@ -3,8 +3,6 @@
 import { Occurrence, FormOptionsData } from "../types";
 import { MOCK_OCCURRENCES, MOCK_FORM_OPTIONS } from "./mockData";
 
-// Ajuste para o IP da sua máquina se for rodar local (ex: http://192.168.0.x:8080/database)
-// Ou use a URL de produção se o backend já estiver atualizado lá
 const API_URL =
   "https://alerta-conecta-backend-production.up.railway.app/database";
 
