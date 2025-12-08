@@ -54,7 +54,17 @@ export default function OccurrenceDetails() {
           <Feather name="arrow-left" size={24} color={theme.colors.white} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Detalhes #{occurrence.id}</Text>
-        <View style={{ width: 24 }} />
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() =>
+            navigation.navigate(
+              "EditOccurrence" as never,
+              { occurrenceData: occurrence } as never,
+            )
+          }
+        >
+          <Feather name="edit-2" size={24} color={theme.colors.white} />
+        </TouchableOpacity>
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>

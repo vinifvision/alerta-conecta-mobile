@@ -10,7 +10,7 @@ export interface User {
   phone?: string;
 }
 
-export type OccurrenceStatus = "Em andamento" | "Encerrada" | "Cancelada";
+export type OccurrenceStatus = "Em_andamento" | "Encerrada" | "Cancelada";
 export type OccurrencePriority = "Baixa" | "Media" | "Alta";
 export type BackendAddress = {
   street: string;
@@ -27,14 +27,17 @@ export type BackendType = {
 
 export type Occurrence = {
   id: number;
-  titule: string | null;
+  titule?: string | null;
   date: string;
   victims: string | null;
   details: string | null;
   status: OccurrenceStatus;
   priority: OccurrencePriority;
+
   type: BackendType;
   address?: BackendAddress | null;
+
+  // Deixe lat/lng opcionais para não quebrar com dados antigos
   lat?: number | null;
   lng?: number | null;
 };
