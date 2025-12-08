@@ -18,30 +18,47 @@ export default function OccurrenceDetails() {
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
-  // CORREÇÃO: Pegamos o objeto inteiro enviado pela Home
-  // Não fazemos mais fetch(id) para evitar erro com backend offline
+  // Recebe dados da Home
   const { occurrenceData } = route.params || {};
 
-  // Se por acaso vier vazio, volta
   if (!occurrenceData) {
-    navigation.goBack();
-    return null;
+    return (
+      <View style={styles.container}>
+        <Text
+          style={{
+            color: theme.colors.text,
+            textAlign: "center",
+            marginTop: 50,
+          }}
+        >
+          Erro: Dados não carregados.
+        </Text>
+        <TouchableOpacity onPress={() => navigation.goBack()}>
+          <Text
+            style={{
+              color: theme.colors.primary,
+              textAlign: "center",
+              marginTop: 10,
+            }}
+          >
+            Voltar
+          </Text>
+        </TouchableOpacity>
+      </View>
+    );
   }
 
   const occurrence: Occurrence = occurrenceData;
+  const itemTitle =
+    occurrence.titule || (occurrence as any).title || "Sem Título";
 
-  // Usa as coordenadas se existirem, senão usa um padrão (Recife)
+  // Coordenadas seguras
+  const hasCoords = occurrence.lat && occurrence.lng && occurrence.lat !== 0;
   const initialRegion = {
-    latitude: occurrence.lat || -8.047,
-    longitude: occurrence.lng || -34.877,
+    latitude: hasCoords ? occurrence.lat! : -8.047,
+    longitude: hasCoords ? occurrence.lng! : -34.877,
     latitudeDelta: 0.01,
     longitudeDelta: 0.01,
-  };
-
-  const formatAddress = () => {
-    if (!occurrence.address) return "Endereço não disponível";
-    // Tenta montar com o que tem
-    return `${occurrence.address.street || "Rua N/A"}, ${occurrence.address.number || "S/N"}`;
   };
 
   return (
@@ -54,6 +71,7 @@ export default function OccurrenceDetails() {
           <Feather name="arrow-left" size={24} color={theme.colors.white} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Detalhes #{occurrence.id}</Text>
+        {/* Botão Editar */}
         <TouchableOpacity
           style={styles.backButton}
           onPress={() =>
@@ -70,11 +88,11 @@ export default function OccurrenceDetails() {
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.mapContainer}>
           <MapView style={styles.map} initialRegion={initialRegion}>
-            {occurrence.lat && occurrence.lng && (
+            {hasCoords && (
               <Marker
                 coordinate={{
-                  latitude: occurrence.lat,
-                  longitude: occurrence.lng,
+                  latitude: occurrence.lat!,
+                  longitude: occurrence.lng!,
                 }}
               />
             )}
@@ -85,21 +103,21 @@ export default function OccurrenceDetails() {
               size={16}
               color={theme.colors.primary}
             />
-            <Text style={styles.addressText} numberOfLines={1}>
-              {formatAddress()}
+            <Text style={styles.addressText}>
+              {occurrence.address
+                ? `${occurrence.address.street}, ${occurrence.address.number}`
+                : "Endereço não disponível"}
             </Text>
           </View>
         </View>
 
         <View style={styles.mainCard}>
-          <Text style={styles.occurrenceTitle}>
-            {occurrence.titule || "Sem Título"}
-          </Text>
+          <Text style={styles.occurrenceTitle}>{itemTitle}</Text>
           <View style={styles.rowBetween}>
             <Text style={styles.occurrenceType}>
-              {occurrence.type?.name || "Tipo não informado"}
+              {occurrence.type?.name || "Tipo N/A"}
             </Text>
-            <View style={styles.statusBadge}>
+            <View style={[styles.statusBadge]}>
               <Text style={styles.statusText}>{occurrence.status}</Text>
             </View>
           </View>
@@ -110,12 +128,10 @@ export default function OccurrenceDetails() {
           <Text style={styles.descriptionText}>
             {occurrence.details || "Sem descrição."}
           </Text>
-
           <View style={styles.divider} />
-
           <Text style={styles.sectionTitle}>Vítimas</Text>
           <Text style={styles.descriptionText}>
-            {occurrence.victims || "Nenhuma informada."}
+            {occurrence.victims || "Nenhuma."}
           </Text>
         </View>
       </ScrollView>
@@ -123,8 +139,6 @@ export default function OccurrenceDetails() {
   );
 }
 
-// ... (Mantenha os estilos 'createStyles' que já existiam no arquivo, ou copie do anterior se preferir)
-// Vou incluir apenas os estilos essenciais caso tenha perdido
 const createStyles = (theme: any) =>
   StyleSheet.create({
     container: { flex: 1, backgroundColor: theme.colors.background },

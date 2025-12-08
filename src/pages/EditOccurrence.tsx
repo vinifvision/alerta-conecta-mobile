@@ -18,16 +18,16 @@ import { Occurrence, OccurrencePriority } from "../types";
 export default function EditOccurrence() {
   const navigation = useNavigation();
   const route = useRoute<any>();
-  const { occurrenceData } = route.params; // Recebe os dados da tela de detalhes
+  const { occurrenceData } = route.params;
 
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
   const [loading, setLoading] = useState(false);
 
-  // Preenche os estados com os dados atuais
+  // Inicialização segura
   const [titulo, setTitulo] = useState(
-    occurrenceData.titule || occurrenceData.title || "",
+    occurrenceData.titule || (occurrenceData as any).title || "",
   );
   const [detalhes, setDetalhes] = useState(occurrenceData.details || "");
   const [envolvidos, setEnvolvidos] = useState(occurrenceData.victims || "");
@@ -39,10 +39,10 @@ export default function EditOccurrence() {
   async function handleUpdate() {
     setLoading(true);
     try {
-      // Monta o objeto atualizado mantendo os dados originais (ID, endereço, etc)
+      // Cria objeto de atualização mantendo ID e outros campos
       const updatedData: Occurrence = {
         ...occurrenceData,
-        titule: titulo,
+        titule: titulo, // Mantemos 'titule' para compatibilidade
         victims: envolvidos,
         details: detalhes,
         priority: prioridade,
@@ -52,7 +52,6 @@ export default function EditOccurrence() {
       await occurrenceService.update(occurrenceData.id, updatedData);
 
       Alert.alert("Sucesso", "Ocorrência atualizada!");
-      // Volta para a Home para recarregar a lista
       navigation.navigate("Home" as never);
     } catch (error: any) {
       Alert.alert("Erro", error.message);
@@ -66,18 +65,13 @@ export default function EditOccurrence() {
       <Text style={styles.title}>Editar Ocorrência #{occurrenceData.id}</Text>
 
       <Text style={styles.label}>Título</Text>
-      <TextInput
-        style={styles.input}
-        value={titulo}
-        onChangeText={setTitulo}
-        placeholderTextColor={theme.colors.textSecondary}
-      />
+      <TextInput style={styles.input} value={titulo} onChangeText={setTitulo} />
 
       <Text style={styles.label}>Status</Text>
       <View style={styles.pickerContainer}>
         <Picker
           selectedValue={status}
-          onValueChange={(itemValue) => setStatus(itemValue)}
+          onValueChange={setStatus}
           style={{ color: theme.colors.text }}
           dropdownIconColor={theme.colors.text}
         >
@@ -91,7 +85,7 @@ export default function EditOccurrence() {
       <View style={styles.pickerContainer}>
         <Picker
           selectedValue={prioridade}
-          onValueChange={(itemValue) => setPrioridade(itemValue)}
+          onValueChange={setPrioridade}
           style={{ color: theme.colors.text }}
           dropdownIconColor={theme.colors.text}
         >
@@ -106,7 +100,6 @@ export default function EditOccurrence() {
         style={styles.input}
         value={envolvidos}
         onChangeText={setEnvolvidos}
-        placeholderTextColor={theme.colors.textSecondary}
       />
 
       <Text style={styles.label}>Detalhes</Text>
@@ -115,7 +108,6 @@ export default function EditOccurrence() {
         value={detalhes}
         onChangeText={setDetalhes}
         multiline
-        placeholderTextColor={theme.colors.textSecondary}
       />
 
       <TouchableOpacity

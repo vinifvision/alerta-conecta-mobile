@@ -8,7 +8,7 @@ import {
   Text,
   ActivityIndicator,
 } from "react-native";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { Feather } from "@expo/vector-icons";
 import { useAuth } from "../contexts/AuthContext";
 import { useTheme } from "../contexts/ThemeContext";
@@ -31,23 +31,21 @@ export default function Home() {
 
   const [allOccurrences, setAllOccurrences] = useState<Occurrence[]>([]);
   const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
 
-  // Estado da Busca de Texto
+  // Busca texto
   const [searchText, setSearchText] = useState("");
-
-  // Estado do Modal de Filtros (REMOVIDO: region)
+  // Filtros
   const [isFilterVisible, setIsFilterVisible] = useState(false);
   const [filters, setFilters] = useState<FilterState>({
     startDate: "",
     endDate: "",
     status: null,
     type: null,
-    // region: null, <-- Removido
+    region: null,
   });
 
   const fetchOccurrences = async () => {
-    setRefreshing(true);
+    // Não ativa loading total no refresh para não piscar a tela toda
     try {
       const data = await occurrenceService.getAll();
       setAllOccurrences(data);
@@ -55,51 +53,54 @@ export default function Home() {
       console.error(error);
     } finally {
       setLoading(false);
-      setRefreshing(false);
     }
   };
 
-  useEffect(() => {
-    fetchOccurrences();
-  }, []);
+  // Atualiza a lista sempre que a tela ganhar foco (útil após voltar da edição/registro)
+  useFocusEffect(
+    React.useCallback(() => {
+      fetchOccurrences();
+    }, []),
+  );
 
-  // Lógica de Filtragem Otimizada
+  // Lógica de Filtragem e Agrupamento
   const sections = useMemo(() => {
     const filtered = allOccurrences.filter((item) => {
-      // 1. Filtro por Texto (Título ou ID)
+      // Filtro Texto (Título ou ID)
+      // Suporta 'titule' (Java atual) ou 'title' (Correção futura)
+      const itemTitle = item.titule || (item as any).title || "";
       const matchSearch = searchText
         ? String(item.id).includes(searchText) ||
-          item.titule?.toLowerCase().includes(searchText.toLowerCase())
+          itemTitle.toLowerCase().includes(searchText.toLowerCase())
         : true;
 
-      // 2. Filtro por Status
+      // Filtro Status
       const matchStatus = filters.status
         ? item.status === filters.status
         : true;
 
-      // 3. Filtro por Tipo (ID)
+      // Filtro Tipo (ID)
       const matchType = filters.type
         ? String(item.type?.id) === String(filters.type)
         : true;
 
-      // 4. Filtro por Data
+      // Filtro Data
       let matchDate = true;
       if (filters.startDate) {
-        const itemDate = new Date(item.date).getTime();
-        const startDate = new Date(filters.startDate).getTime();
-        matchDate = matchDate && itemDate >= startDate;
+        matchDate =
+          matchDate &&
+          new Date(item.date).getTime() >=
+            new Date(filters.startDate).getTime();
       }
       if (filters.endDate) {
-        const itemDate = new Date(item.date).getTime();
-        const endDate = new Date(filters.endDate);
-        endDate.setHours(23, 59, 59, 999);
-        matchDate = matchDate && itemDate <= endDate.getTime();
+        const end = new Date(filters.endDate);
+        end.setHours(23, 59, 59, 999);
+        matchDate = matchDate && new Date(item.date).getTime() <= end.getTime();
       }
 
       return matchSearch && matchStatus && matchType && matchDate;
     });
 
-    // Agrupamento
     const result: SectionData[] = [];
     const addGroup = (title: string, st: string) => {
       const data = filtered.filter((o) => o.status === st);
@@ -124,14 +125,6 @@ export default function Home() {
   const getPriorityColor = (p: string) =>
     p === "Alta" ? "#D32F2F" : "#1976D2";
 
-  // Ícone de filtro ativo (sem region)
-  const isFilterActive = !!(
-    filters.status ||
-    filters.type ||
-    filters.startDate ||
-    filters.endDate
-  );
-
   const renderItem = ({ item }: { item: Occurrence }) => (
     <TouchableOpacity
       style={styles.card}
@@ -150,10 +143,12 @@ export default function Home() {
           ]}
         />
         <View style={{ flex: 1 }}>
-          <Text style={styles.cardTitle}>{item.titule}</Text>
+          <Text style={styles.cardTitle}>
+            {item.titule || (item as any).title || "Sem Título"}
+          </Text>
           <Text style={styles.cardSubtitle}>
-            {item.type?.name || "Sem Tipo"} •{" "}
-            {item.address?.street || "Sem endereço"}
+            {item.type?.name || "Tipo N/A"} •{" "}
+            {item.address?.street || "Endereço N/A"}
           </Text>
         </View>
         <View
@@ -180,7 +175,9 @@ export default function Home() {
             color={theme.colors.textSecondary}
           />
           <Text style={styles.dateText}>
-            {new Date(item.date).toLocaleDateString("pt-BR")}
+            {item.date
+              ? new Date(item.date).toLocaleDateString("pt-BR")
+              : "--/--"}
           </Text>
         </View>
         <Text style={styles.idText}>#{item.id}</Text>
@@ -194,7 +191,6 @@ export default function Home() {
         barStyle="light-content"
         backgroundColor={theme.colors.primary}
       />
-
       <View style={styles.header}>
         <View style={styles.headerTop}>
           <View>
@@ -212,7 +208,7 @@ export default function Home() {
           onChangeText={setSearchText}
           onClear={() => setSearchText("")}
           onFilterPress={() => setIsFilterVisible(true)}
-          filterActive={isFilterActive}
+          filterActive={!!(filters.status || filters.type || filters.startDate)}
         />
       </View>
 
@@ -237,9 +233,7 @@ export default function Home() {
           )}
           contentContainerStyle={styles.listContent}
           ListEmptyComponent={
-            <Text style={{ textAlign: "center", marginTop: 20, color: "#888" }}>
-              Nenhuma ocorrência encontrada.
-            </Text>
+            <Text style={styles.emptyText}>Nenhuma ocorrência encontrada.</Text>
           }
         />
       )}
@@ -257,9 +251,14 @@ export default function Home() {
         filters={filters}
         setFilters={setFilters}
         onApply={() => setIsFilterVisible(false)}
-        // Limpar filtro atualizado
         onClear={() =>
-          setFilters({ startDate: "", endDate: "", status: null, type: null })
+          setFilters({
+            startDate: "",
+            endDate: "",
+            status: null,
+            region: null,
+            type: null,
+          })
         }
       />
     </View>
@@ -389,9 +388,6 @@ const createStyles = (theme: any) =>
       justifyContent: "center",
       alignItems: "center",
       elevation: 6,
-      shadowColor: "#000",
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.25,
-      shadowRadius: 3.84,
     },
+    emptyText: { textAlign: "center", marginTop: 20, color: "#888" },
   });
