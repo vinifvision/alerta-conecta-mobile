@@ -10,7 +10,7 @@ export interface User {
   phone?: string;
 }
 
-export type OccurrenceStatus = "Em_andamento" | "Encerrada" | "Cancelada";
+export type OccurrenceStatus = "Em andamento" | "Encerrada" | "Cancelada";
 export type OccurrencePriority = "Baixa" | "Media" | "Alta";
 export type BackendAddress = {
   street: string;

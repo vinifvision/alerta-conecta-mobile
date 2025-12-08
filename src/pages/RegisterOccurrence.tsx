@@ -31,45 +31,55 @@ export default function RegisterOccurrence() {
   const [envolvidos, setEnvolvidos] = useState("");
   const [prioridade, setPrioridade] = useState<OccurrencePriority>("Baixa");
   const [tipoId, setTipoId] = useState("1");
-  
+
   // Endereço Visual (Texto)
   const [rua, setRua] = useState("");
   const [numero, setNumero] = useState("");
   const [complemento, setComplemento] = useState("");
-  const [bairroId, setBairroId] = useState("1"); 
+  const [bairroId, setBairroId] = useState("1");
 
   // Coordenadas (Invisíveis ou visíveis se quiser debug)
-  const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(
+    null,
+  );
 
-  // ---------------------------------------------------------
-  // 1. PEGAR LOCALIZAÇÃO ATUAL (GPS -> ENDEREÇO + LAT/LNG)
-  // ---------------------------------------------------------
   async function handleGetGpsLocation() {
     setGpsLoading(true);
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== "granted") {
-        Alert.alert("Permissão negada", "Habilite a localização nas configurações.");
+        Alert.alert(
+          "Permissão negada",
+          "Habilite a localização nas configurações.",
+        );
         return;
       }
 
       // Pega posição precisa
-      const location = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
+      const location = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.High,
+      });
       const { latitude, longitude } = location.coords;
 
       // Salva coordenadas
       setCoords({ lat: latitude, lng: longitude });
 
       // Converte para Endereço (Reverse Geocode)
-      const addressResponse = await Location.reverseGeocodeAsync({ latitude, longitude });
+      const addressResponse = await Location.reverseGeocodeAsync({
+        latitude,
+        longitude,
+      });
 
       if (addressResponse.length > 0) {
         const addr = addressResponse[0];
-        setRua(addr.street || ""); 
+        setRua(addr.street || "");
         setNumero(addr.streetNumber || "");
         // Nota: O bairro (district) vem como texto, mas seu backend pede ID.
         // O usuário precisará confirmar o bairro no Picker manualmente por enquanto.
-        Alert.alert("Localização Encontrada", `Endereço preenchido: ${addr.street}, ${addr.streetNumber}`);
+        Alert.alert(
+          "Localização Encontrada",
+          `Endereço preenchido: ${addr.street}, ${addr.streetNumber}`,
+        );
       }
     } catch (error) {
       Alert.alert("Erro no GPS", "Não foi possível obter sua localização.");
@@ -79,9 +89,6 @@ export default function RegisterOccurrence() {
     }
   }
 
-  // ---------------------------------------------------------
-  // 2. ENVIAR FORMULÁRIO (ENDEREÇO DIGITADO -> LAT/LNG)
-  // ---------------------------------------------------------
   async function handleRegister() {
     if (!titulo || !rua || !numero) {
       return Alert.alert("Erro", "Preencha os campos obrigatórios.");
@@ -97,7 +104,7 @@ export default function RegisterOccurrence() {
         try {
           const fullAddress = `${rua}, ${numero}, Pernambuco, Brasil`; // Melhora a precisão
           const geocodeResult = await Location.geocodeAsync(fullAddress);
-          
+
           if (geocodeResult.length > 0) {
             finalLat = geocodeResult[0].latitude;
             finalLng = geocodeResult[0].longitude;
@@ -114,12 +121,12 @@ export default function RegisterOccurrence() {
         victims: envolvidos,
         details: detalhes,
         priority: prioridade,
-        status: "Em_andamento",
+        status: "Em andamento",
         date: new Date().toISOString(),
-        
+
         type: {
           id: Number(tipoId),
-          name: "Tipo Selecionado", 
+          name: "Tipo Selecionado",
         },
 
         address: {
@@ -139,7 +146,6 @@ export default function RegisterOccurrence() {
 
       Alert.alert("Sucesso", "Ocorrência registrada e geolocalizada!");
       navigation.goBack();
-
     } catch (error: any) {
       Alert.alert("Erro", error.message);
     } finally {
@@ -189,12 +195,23 @@ export default function RegisterOccurrence() {
         </Picker>
       </View>
 
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 15, marginBottom: 10 }}>
+      <View
+        style={{
+          flexDirection: "row",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginTop: 15,
+          marginBottom: 10,
+        }}
+      >
         <Text style={styles.sectionTitle}>Endereço</Text>
-        
+
         {/* BOTÃO INTELIGENTE DE GPS */}
-        <TouchableOpacity 
-          style={[styles.gpsButton, coords ? { backgroundColor: theme.colors.primary } : {}]}
+        <TouchableOpacity
+          style={[
+            styles.gpsButton,
+            coords ? { backgroundColor: theme.colors.primary } : {},
+          ]}
           onPress={handleGetGpsLocation}
           disabled={gpsLoading}
         >
@@ -202,7 +219,12 @@ export default function RegisterOccurrence() {
             <ActivityIndicator size="small" color="#FFF" />
           ) : (
             <>
-              <Feather name="map-pin" size={14} color="#FFF" style={{ marginRight: 5 }} />
+              <Feather
+                name="map-pin"
+                size={14}
+                color="#FFF"
+                style={{ marginRight: 5 }}
+              />
               <Text style={styles.gpsButtonText}>
                 {coords ? "Localização Atualizada" : "Usar Localização Atual"}
               </Text>
@@ -326,16 +348,16 @@ const createStyles = (theme: any) =>
       fontWeight: "bold",
     },
     gpsButton: {
-      flexDirection: 'row',
-      backgroundColor: '#28a745',
+      flexDirection: "row",
+      backgroundColor: "#28a745",
       paddingHorizontal: 12,
       paddingVertical: 8,
       borderRadius: 20,
-      alignItems: 'center',
+      alignItems: "center",
     },
     gpsButtonText: {
-      color: '#FFF',
+      color: "#FFF",
       fontSize: 12 * theme.fontScale,
-      fontWeight: 'bold',
+      fontWeight: "bold",
     },
   });
