@@ -18,6 +18,7 @@ import ProfileScreen from "./src/pages/Profile";
 import OccurrenceDetails from "./src/pages/OccurrenceDetails";
 import SettingsScreen from "./src/pages/Settings";
 import RegisterOccurrence from "./src/pages/RegisterOccurrence";
+import EditOccurrence from "./src/pages/EditOccurrence"; // Importe a tela
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -79,6 +80,11 @@ function Routes() {
             component={RegisterOccurrence}
           />
           <Stack.Screen name="Settings" component={SettingsScreen} />
+          <Stack.Screen
+            name="EditOccurrence"
+            component={EditOccurrence}
+            options={{ headerShown: false }}
+          />
         </>
       ) : (
         <>
