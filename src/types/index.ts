@@ -33,8 +33,11 @@ export type Occurrence = {
   details: string | null;
   status: OccurrenceStatus;
   priority: OccurrencePriority;
+
   type: BackendType;
   address?: BackendAddress | null;
+
+  // Deixe lat/lng opcionais para não quebrar com dados antigos
   lat?: number | null;
   lng?: number | null;
 };
