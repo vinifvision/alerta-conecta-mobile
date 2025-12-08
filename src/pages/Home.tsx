@@ -32,14 +32,18 @@ export default function Home() {
   const [allOccurrences, setAllOccurrences] = useState<Occurrence[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+
+  // Estado da Busca de Texto
   const [searchText, setSearchText] = useState("");
+
+  // Estado do Modal de Filtros (REMOVIDO: region)
   const [isFilterVisible, setIsFilterVisible] = useState(false);
   const [filters, setFilters] = useState<FilterState>({
     startDate: "",
     endDate: "",
     status: null,
-    region: null,
     type: null,
+    // region: null, <-- Removido
   });
 
   const fetchOccurrences = async () => {
@@ -59,37 +63,74 @@ export default function Home() {
     fetchOccurrences();
   }, []);
 
+  // Lógica de Filtragem Otimizada
   const sections = useMemo(() => {
     const filtered = allOccurrences.filter((item) => {
+      // 1. Filtro por Texto (Título ou ID)
       const matchSearch = searchText
         ? String(item.id).includes(searchText) ||
           item.titule?.toLowerCase().includes(searchText.toLowerCase())
         : true;
-      // ... (Lógica de filtros igual ao anterior) ...
-      return matchSearch; // Simplificado para brevidade, mantenha sua lógica de filtros
+
+      // 2. Filtro por Status
+      const matchStatus = filters.status
+        ? item.status === filters.status
+        : true;
+
+      // 3. Filtro por Tipo (ID)
+      const matchType = filters.type
+        ? String(item.type?.id) === String(filters.type)
+        : true;
+
+      // 4. Filtro por Data
+      let matchDate = true;
+      if (filters.startDate) {
+        const itemDate = new Date(item.date).getTime();
+        const startDate = new Date(filters.startDate).getTime();
+        matchDate = matchDate && itemDate >= startDate;
+      }
+      if (filters.endDate) {
+        const itemDate = new Date(item.date).getTime();
+        const endDate = new Date(filters.endDate);
+        endDate.setHours(23, 59, 59, 999);
+        matchDate = matchDate && itemDate <= endDate.getTime();
+      }
+
+      return matchSearch && matchStatus && matchType && matchDate;
     });
 
+    // Agrupamento
     const result: SectionData[] = [];
     const addGroup = (title: string, st: string) => {
       const data = filtered.filter((o) => o.status === st);
       if (data.length) result.push({ title, data, count: data.length });
     };
+
     addGroup("Em Andamento", "Em_andamento");
     addGroup("Encerradas", "Encerrada");
     addGroup("Canceladas", "Cancelada");
+
     return result;
   }, [allOccurrences, searchText, filters]);
 
+  // Cores
   const getStatusColor = (s: string) =>
     s === "Em_andamento"
       ? "#FF8C00"
       : s === "Encerrada"
         ? "#4CAF50"
         : "#9E9E9E";
-  const getPriorityBg = (p: string) =>
-    p === "Alta" || p === "Critica" ? "#FFEBEE" : "#E3F2FD";
+  const getPriorityBg = (p: string) => (p === "Alta" ? "#FFEBEE" : "#E3F2FD");
   const getPriorityColor = (p: string) =>
-    p === "Alta" || p === "Critica" ? "#D32F2F" : "#1976D2";
+    p === "Alta" ? "#D32F2F" : "#1976D2";
+
+  // Ícone de filtro ativo (sem region)
+  const isFilterActive = !!(
+    filters.status ||
+    filters.type ||
+    filters.startDate ||
+    filters.endDate
+  );
 
   const renderItem = ({ item }: { item: Occurrence }) => (
     <TouchableOpacity
@@ -97,7 +138,7 @@ export default function Home() {
       onPress={() =>
         navigation.navigate(
           "OccurrenceDetails" as never,
-          { id: item.id } as never,
+          { occurrenceData: item } as never,
         )
       }
     >
@@ -111,7 +152,8 @@ export default function Home() {
         <View style={{ flex: 1 }}>
           <Text style={styles.cardTitle}>{item.titule}</Text>
           <Text style={styles.cardSubtitle}>
-            {item.nome_tipo} • {item.region}
+            {item.type?.name || "Sem Tipo"} •{" "}
+            {item.address?.street || "Sem endereço"}
           </Text>
         </View>
         <View
@@ -146,21 +188,13 @@ export default function Home() {
     </TouchableOpacity>
   );
 
-  const renderSectionHeader = ({ section }: any) => (
-    <View style={styles.sectionHeader}>
-      <Text style={styles.sectionTitle}>{section.title}</Text>
-      <View style={styles.sectionBadge}>
-        <Text style={styles.sectionBadgeText}>{section.count}</Text>
-      </View>
-    </View>
-  );
-
   return (
     <View style={styles.container}>
       <StatusBar
         barStyle="light-content"
         backgroundColor={theme.colors.primary}
       />
+
       <View style={styles.header}>
         <View style={styles.headerTop}>
           <View>
@@ -173,14 +207,12 @@ export default function Home() {
             <Feather name="log-out" size={20} color={theme.colors.white} />
           </TouchableOpacity>
         </View>
-        {/* SearchBar deve receber tema via props se necessário, ou usar Context internamente. 
-            Para simplificar, assumimos que SearchBar é neutro ou também usa Theme. */}
         <SearchBar
           value={searchText}
           onChangeText={setSearchText}
           onClear={() => setSearchText("")}
           onFilterPress={() => setIsFilterVisible(true)}
-          filterActive={false}
+          filterActive={isFilterActive}
         />
       </View>
 
@@ -195,10 +227,29 @@ export default function Home() {
           sections={sections}
           keyExtractor={(i) => String(i.id)}
           renderItem={renderItem}
-          renderSectionHeader={renderSectionHeader}
+          renderSectionHeader={({ section }) => (
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>{section.title}</Text>
+              <View style={styles.sectionBadge}>
+                <Text style={styles.sectionBadgeText}>{section.count}</Text>
+              </View>
+            </View>
+          )}
           contentContainerStyle={styles.listContent}
+          ListEmptyComponent={
+            <Text style={{ textAlign: "center", marginTop: 20, color: "#888" }}>
+              Nenhuma ocorrência encontrada.
+            </Text>
+          }
         />
       )}
+
+      <TouchableOpacity
+        style={styles.fab}
+        onPress={() => navigation.navigate("RegisterOccurrence" as never)}
+      >
+        <Feather name="plus" size={24} color="#FFF" />
+      </TouchableOpacity>
 
       <FilterModal
         visible={isFilterVisible}
@@ -206,7 +257,10 @@ export default function Home() {
         filters={filters}
         setFilters={setFilters}
         onApply={() => setIsFilterVisible(false)}
-        onClear={() => {}}
+        // Limpar filtro atualizado
+        onClear={() =>
+          setFilters({ startDate: "", endDate: "", status: null, type: null })
+        }
       />
     </View>
   );
@@ -323,5 +377,21 @@ const createStyles = (theme: any) =>
       fontSize: 12 * theme.fontScale,
       color: theme.colors.primary,
       fontWeight: "bold",
+    },
+    fab: {
+      position: "absolute",
+      bottom: 20,
+      right: 20,
+      width: 56,
+      height: 56,
+      borderRadius: 28,
+      backgroundColor: theme.colors.primary,
+      justifyContent: "center",
+      alignItems: "center",
+      elevation: 6,
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.25,
+      shadowRadius: 3.84,
     },
   });

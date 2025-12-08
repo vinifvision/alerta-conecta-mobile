@@ -28,8 +28,6 @@ const STATUS_OPTIONS = [
   { label: "Cancelada", value: "Cancelada" },
 ];
 
-const REGION_OPTIONS = ["RMR", "Zona da Mata", "Agreste", "Sertão"];
-
 const TYPE_OPTIONS = [
   { label: "Incêndio", value: 1 },
   { label: "Resgate", value: 2 },
@@ -150,35 +148,6 @@ export default function FilterModal({
                       ]}
                     >
                       {opt.label}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-
-              {/* 3. Região */}
-              <Text style={styles.sectionTitle}>Região</Text>
-              <View style={styles.chipsRow}>
-                {REGION_OPTIONS.map((adress) => (
-                  <TouchableOpacity
-                    key={adress}
-                    style={[
-                      styles.chip,
-                      filters.adress === adress && styles.chipActive,
-                    ]}
-                    onPress={() =>
-                      updateFilter(
-                        "adress",
-                        filters.adress === adress ? null : adress,
-                      )
-                    }
-                  >
-                    <Text
-                      style={[
-                        styles.chipText,
-                        filters.adress === adress && styles.chipTextActive,
-                      ]}
-                    >
-                      {adress}
                     </Text>
                   </TouchableOpacity>
                 ))}
