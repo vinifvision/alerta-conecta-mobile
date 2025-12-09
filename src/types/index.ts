@@ -1,13 +1,15 @@
 // src/types/index.ts
 
 export interface User {
-  status: string;
+  status?: string;
+
   name: string;
-  email: string;
   role: string;
+  registry: string; // Matrícula
+  phone: string;
+  email: string;
+  avatarUrl: string; // URL da foto de perfil
   cpf: string;
-  registry?: string;
-  phone?: string;
 }
 
 export type OccurrenceStatus = "Em_andamento" | "Encerrada" | "Cancelada";
@@ -40,6 +42,8 @@ export type Occurrence = {
   // Deixe lat/lng opcionais para não quebrar com dados antigos
   lat?: number | null;
   lng?: number | null;
+
+  imageUrl?: string | null;
 };
 
 export type FilterOption = { value: string | number; label: string };

@@ -1,19 +1,18 @@
 import React, { useMemo } from "react";
-import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, Image } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { Feather } from "@expo/vector-icons";
 import { useAuth } from "../contexts/AuthContext";
 import { useTheme } from "../contexts/ThemeContext";
 
 export default function ProfileScreen() {
-  const { user } = useAuth(); // Busca os dados do contexto (Mock ou Backend)
+  const { user } = useAuth();
   const navigation = useNavigation();
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
   return (
     <View style={styles.container}>
-      {/* Cabeçalho */}
       <View style={styles.headerTop}>
         <Text style={styles.headerTitle}>Meu Perfil</Text>
         <TouchableOpacity
@@ -24,28 +23,31 @@ export default function ProfileScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Avatar e Nome */}
+      {/* Lógica do Avatar: Se tiver URL, mostra imagem. Se não, mostra inicial */}
       <View style={styles.avatarContainer}>
-        <Text style={styles.avatarText}>{user?.name?.charAt(0) || "U"}</Text>
+        {user?.avatarUrl ? (
+          <Image source={{ uri: user.avatarUrl }} style={styles.avatarImage} />
+        ) : (
+          <Text style={styles.avatarText}>{user?.name?.charAt(0) || "U"}</Text>
+        )}
       </View>
+
       <Text style={styles.name}>{user?.name || "Usuário"}</Text>
       <Text style={styles.role}>{user?.role || "Cargo não definido"}</Text>
 
-      {/* Lista de Informações */}
       <View style={styles.infoContainer}>
-        {/* NOVO: Matrícula */}
+        {/* NOVO: Batalhão */}
         <Text style={styles.infoLabel}>Matrícula:</Text>
         <Text style={styles.infoValue}>{user?.registry || "N/A"}</Text>
 
         <Text style={styles.infoLabel}>Email:</Text>
         <Text style={styles.infoValue}>{user?.email}</Text>
 
-        <Text style={styles.infoLabel}>CPF:</Text>
-        <Text style={styles.infoValue}>{user?.cpf || "Não informado"}</Text>
-
-        {/* NOVO: Telefone */}
         <Text style={styles.infoLabel}>Telefone:</Text>
         <Text style={styles.infoValue}>{user?.phone || "Não informado"}</Text>
+
+        <Text style={styles.infoLabel}>CPF:</Text>
+        <Text style={styles.infoValue}>{user?.cpf || "Não informado"}</Text>
       </View>
     </View>
   );
@@ -88,6 +90,12 @@ const createStyles = (theme: any) =>
       borderWidth: 4,
       borderColor: theme.colors.card,
       elevation: 5,
+      overflow: "hidden", // Importante para cortar a imagem redonda
+    },
+    avatarImage: {
+      width: "100%",
+      height: "100%",
+      resizeMode: "cover",
     },
     avatarText: {
       color: theme.colors.white,
@@ -98,6 +106,8 @@ const createStyles = (theme: any) =>
       fontSize: 26 * theme.fontScale,
       fontWeight: "bold",
       color: theme.colors.text,
+      textAlign: "center",
+      paddingHorizontal: 20,
     },
     role: {
       fontSize: 18 * theme.fontScale,
@@ -113,7 +123,7 @@ const createStyles = (theme: any) =>
       elevation: 2,
       borderWidth: 1,
       borderColor: theme.colors.border,
-      marginBottom: 20, // Margem inferior extra
+      marginBottom: 20,
     },
     infoLabel: {
       color: theme.colors.textSecondary,
