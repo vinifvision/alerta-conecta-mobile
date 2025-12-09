@@ -65,24 +65,6 @@ export default function RegisterOccurrence() {
     }
   };
 
-  const handleRecordVideo = async () => {
-    const { status } = await ImagePicker.requestCameraPermissionsAsync();
-    if (status !== "granted")
-      return Alert.alert("Permissão", "Precisamos da câmera.");
-
-    setMediaLoading(true);
-    const result = await ImagePicker.launchCameraAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Videos,
-      videoMaxDuration: 30,
-    });
-    setMediaLoading(false);
-
-    if (!result.canceled) {
-      setVideoUri(result.assets[0].uri);
-      setPhotoUri(null);
-    }
-  };
-
   // --- GPS ---
   async function handleGetGpsLocation() {
     setGpsLoading(true);
@@ -226,7 +208,7 @@ export default function RegisterOccurrence() {
           ) : (
             <>
               <Feather name="map-pin" size={14} color="#FFF" />
-              <Text style={styles.gpsButtonText}> GPS</Text>
+              <Text style={styles.gpsButtonText}>Usar Localização Atual</Text>
             </>
           )}
         </TouchableOpacity>
@@ -287,14 +269,6 @@ export default function RegisterOccurrence() {
         >
           <Feather name="camera" size={24} color={theme.colors.text} />
           <Text style={styles.mediaText}>Foto</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.mediaButton}
-          onPress={handleRecordVideo}
-          disabled={mediaLoading}
-        >
-          <MaterialIcons name="videocam" size={24} color={theme.colors.text} />
-          <Text style={styles.mediaText}>Vídeo</Text>
         </TouchableOpacity>
       </View>
 

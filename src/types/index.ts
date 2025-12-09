@@ -38,7 +38,11 @@ export type Occurrence = {
   address?: BackendAddress | null;
   lat?: number | null;
   lng?: number | null;
-  imageUrl?: string | null; // Novo: Link da foto
+
+  images?: string[];
+
+  // Mantemos este para compatibilidade antiga
+  imageUrl?: string | null;
 };
 
 export type FilterOption = { value: string | number; label: string };

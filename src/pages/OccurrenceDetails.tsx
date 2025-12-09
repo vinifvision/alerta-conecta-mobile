@@ -1,5 +1,3 @@
-// src/pages/OccurrenceDetails.tsx
-
 import React, { useMemo, useEffect, useState } from "react";
 import {
   View,
@@ -7,7 +5,8 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Alert,
+  Image,
+  Dimensions,
 } from "react-native";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
@@ -15,6 +14,8 @@ import MapView, { Marker } from "react-native-maps";
 import * as Location from "expo-location";
 import { useTheme } from "../contexts/ThemeContext";
 import { Occurrence } from "../types";
+
+const { width } = Dimensions.get("window");
 
 export default function OccurrenceDetails() {
   const navigation = useNavigation();
@@ -28,7 +29,6 @@ export default function OccurrenceDetails() {
 
   const { occurrenceData } = route.params || {};
 
-  // Validação inicial
   if (!occurrenceData) {
     return (
       <View style={styles.container}>
@@ -57,20 +57,34 @@ export default function OccurrenceDetails() {
   }
 
   const occurrence: Occurrence = occurrenceData;
-  // Fallback para título
   const itemTitle =
     (occurrence as any).title || (occurrence as any).titule || "Ocorrência";
 
-  // O backend manda como 'latitude', mas o TS pode ter 'lat'. Usamos 'any' ou checagem dupla para garantir.
+  // --- TRATAMENTO DE COORDENADAS ---
   const rawLat = (occurrence as any).latitude ?? (occurrence as any).lat;
   const rawLng = (occurrence as any).longitude ?? (occurrence as any).lng;
-
   const latNum = Number(rawLat);
   const lngNum = Number(rawLng);
-
-  // Verifica se são números válidos e diferentes de zero
   const hasCoords =
     !isNaN(latNum) && !isNaN(lngNum) && latNum !== 0 && lngNum !== 0;
+
+  // --- CORREÇÃO DA IMAGEM ---
+  // 1. Pega a lista de imagens vinda do backend
+  const imagesList = (occurrence as any).images || [];
+
+  // 2. Pega a primeira imagem, se existir
+  let rawImage = imagesList.length > 0 ? imagesList[0] : null;
+
+  // Fallback para campos antigos
+  if (!rawImage) {
+    rawImage =
+      (occurrence as any).fileUrl || (occurrence as any).imageUrl || null;
+  }
+
+  // 3. Tratamento PROVISÓRIO para o problema do "file:///D:/"
+  // O app não consegue ler D:/ do servidor. Isso deveria ser uma URL http.
+  // Se estiver testando no emulador e o backend for local, isso não vai carregar a menos que o backend sirva o arquivo.
+  const imageUrl = rawImage;
 
   const initialRegion = {
     latitude: hasCoords ? latNum : -8.047,
@@ -141,7 +155,7 @@ export default function OccurrenceDetails() {
         <View style={styles.mapContainer}>
           <MapView
             style={styles.map}
-            region={initialRegion} // Usar region em vez de initialRegion para forçar atualização se mudar
+            region={initialRegion}
             scrollEnabled={false}
             zoomEnabled={false}
           >
@@ -163,6 +177,26 @@ export default function OccurrenceDetails() {
             <Text style={styles.addressText}>{displayAddress}</Text>
           </View>
         </View>
+
+        {/* Exibe a imagem se existir */}
+        {imageUrl ? (
+          <View style={styles.imageContainer}>
+            <Image
+              // Se a URL começar com http ou file:// o React Native tenta carregar
+              source={{ uri: imageUrl }}
+              style={styles.occurrenceImage}
+              resizeMode="cover"
+              // Adiciona um fallback visual caso a imagem falhe (muito provável com caminho D:/)
+              onError={(e) =>
+                console.log("Erro ao carregar imagem: ", e.nativeEvent.error)
+              }
+            />
+            <View style={styles.imageBadge}>
+              <Feather name="image" size={12} color="#FFF" />
+              <Text style={styles.imageBadgeText}>Anexo</Text>
+            </View>
+          </View>
+        ) : null}
 
         <View style={styles.mainCard}>
           <Text style={styles.occurrenceTitle}>{itemTitle}</Text>
@@ -211,6 +245,7 @@ const createStyles = (theme: any) =>
     },
     backButton: { padding: 5 },
     content: { padding: 20, paddingBottom: 40 },
+
     mapContainer: {
       height: 200,
       borderRadius: 12,
@@ -225,7 +260,7 @@ const createStyles = (theme: any) =>
       bottom: 0,
       left: 0,
       right: 0,
-      backgroundColor: "rgba(0,0,0,0.7)", // Fundo escuro transparente para melhor leitura
+      backgroundColor: "rgba(0,0,0,0.7)",
       padding: 10,
       flexDirection: "row",
       alignItems: "center",
@@ -233,9 +268,42 @@ const createStyles = (theme: any) =>
     },
     addressText: {
       fontSize: 12 * theme.fontScale,
-      color: "#FFF", // Texto branco para contraste no mapa
+      color: "#FFF",
       flex: 1,
     },
+
+    imageContainer: {
+      height: 220,
+      borderRadius: 12,
+      overflow: "hidden",
+      marginBottom: 20,
+      backgroundColor: theme.colors.card,
+      position: "relative",
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+    },
+    occurrenceImage: {
+      width: "100%",
+      height: "100%",
+    },
+    imageBadge: {
+      position: "absolute",
+      top: 10,
+      right: 10,
+      backgroundColor: "rgba(0,0,0,0.6)",
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      borderRadius: 8,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 4,
+    },
+    imageBadgeText: {
+      color: "#FFF",
+      fontSize: 10,
+      fontWeight: "bold",
+    },
+
     mainCard: {
       backgroundColor: theme.colors.card,
       padding: 20,
