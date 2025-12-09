@@ -23,7 +23,6 @@ export default function ProfileScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Lógica do Avatar: Se tiver URL, mostra imagem. Se não, mostra inicial */}
       <View style={styles.avatarContainer}>
         {user?.avatarUrl ? (
           <Image source={{ uri: user.avatarUrl }} style={styles.avatarImage} />
@@ -31,20 +30,19 @@ export default function ProfileScreen() {
           <Text style={styles.avatarText}>{user?.name?.charAt(0) || "U"}</Text>
         )}
       </View>
-
       <Text style={styles.name}>{user?.name || "Usuário"}</Text>
       <Text style={styles.role}>{user?.role || "Cargo não definido"}</Text>
 
       <View style={styles.infoContainer}>
-        {/* NOVO: Batalhão */}
+        {/* NOVOS CAMPOS */}
         <Text style={styles.infoLabel}>Matrícula:</Text>
         <Text style={styles.infoValue}>{user?.registry || "N/A"}</Text>
 
-        <Text style={styles.infoLabel}>Email:</Text>
-        <Text style={styles.infoValue}>{user?.email}</Text>
-
         <Text style={styles.infoLabel}>Telefone:</Text>
         <Text style={styles.infoValue}>{user?.phone || "Não informado"}</Text>
+
+        <Text style={styles.infoLabel}>Email:</Text>
+        <Text style={styles.infoValue}>{user?.email}</Text>
 
         <Text style={styles.infoLabel}>CPF:</Text>
         <Text style={styles.infoValue}>{user?.cpf || "Não informado"}</Text>
@@ -69,11 +67,7 @@ const createStyles = (theme: any) =>
       paddingHorizontal: 20,
       marginBottom: 30,
     },
-    headerTitle: {
-      fontSize: 24 * theme.fontScale,
-      fontWeight: "bold",
-      color: theme.colors.text,
-    },
+    headerTitle: { fontSize: 24, fontWeight: "bold", color: theme.colors.text },
     settingsButton: {
       padding: 8,
       backgroundColor: theme.colors.tint,
@@ -90,27 +84,19 @@ const createStyles = (theme: any) =>
       borderWidth: 4,
       borderColor: theme.colors.card,
       elevation: 5,
-      overflow: "hidden", // Importante para cortar a imagem redonda
+      overflow: "hidden",
     },
-    avatarImage: {
-      width: "100%",
-      height: "100%",
-      resizeMode: "cover",
-    },
-    avatarText: {
-      color: theme.colors.white,
-      fontSize: 48 * theme.fontScale,
-      fontWeight: "bold",
-    },
+    avatarImage: { width: "100%", height: "100%", resizeMode: "cover" },
+    avatarText: { color: "#FFF", fontSize: 48, fontWeight: "bold" },
     name: {
-      fontSize: 26 * theme.fontScale,
+      fontSize: 26,
       fontWeight: "bold",
       color: theme.colors.text,
       textAlign: "center",
       paddingHorizontal: 20,
     },
     role: {
-      fontSize: 18 * theme.fontScale,
+      fontSize: 18,
       color: theme.colors.primary,
       marginBottom: 32,
       fontWeight: "500",
@@ -127,12 +113,8 @@ const createStyles = (theme: any) =>
     },
     infoLabel: {
       color: theme.colors.textSecondary,
-      fontSize: 14 * theme.fontScale,
+      fontSize: 14,
       marginTop: 10,
     },
-    infoValue: {
-      color: theme.colors.text,
-      fontSize: 16 * theme.fontScale,
-      fontWeight: "500",
-    },
+    infoValue: { color: theme.colors.text, fontSize: 16, fontWeight: "500" },
   });

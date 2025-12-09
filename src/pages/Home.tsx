@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { Feather } from "@expo/vector-icons";
+import * as Location from "expo-location"; // <--- Importação adicionada
 import { useAuth } from "../contexts/AuthContext";
 import { useTheme } from "../contexts/ThemeContext";
 import { Occurrence } from "../types";
@@ -23,6 +24,63 @@ type SectionData = {
   data: Occurrence[];
   count: number;
 };
+
+// --- Componente auxiliar para resolver Endereço na lista ---
+const AddressResolver = ({
+  latitude,
+  longitude,
+}: {
+  latitude: any;
+  longitude: any;
+}) => {
+  const [addrText, setAddrText] = useState("Localizando...");
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const resolve = async () => {
+      // Normaliza dados para número
+      const latNum = Number(latitude);
+      const lngNum = Number(longitude);
+
+      // Valida coordenadas
+      if (isNaN(latNum) || isNaN(lngNum) || (latNum === 0 && lngNum === 0)) {
+        if (isMounted) setAddrText("Localização não reg.");
+        return;
+      }
+
+      try {
+        const result = await Location.reverseGeocodeAsync({
+          latitude: latNum,
+          longitude: lngNum,
+        });
+
+        if (isMounted) {
+          if (result.length > 0) {
+            const i = result[0];
+            // Formata: "Rua X, 123" ou apenas a rua
+            const street = i.street || "Rua desconhecida";
+            const number = i.streetNumber || "S/N";
+            setAddrText(`${street}, ${number}`);
+          } else {
+            setAddrText("Endereço não enc.");
+          }
+        }
+      } catch (error) {
+        if (isMounted) setAddrText("Endereço indisponível");
+      }
+    };
+
+    resolve();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [latitude, longitude]);
+
+  return <Text>{addrText}</Text>;
+};
+// -----------------------------------------------------------
 
 export default function Home() {
   const { user, logout } = useAuth();
@@ -47,7 +105,6 @@ export default function Home() {
   });
 
   const fetchOccurrences = async () => {
-    // Não ativa loading total no refresh para não piscar a tela toda
     try {
       const data = await occurrenceService.getAll();
       setAllOccurrences(data);
@@ -58,20 +115,17 @@ export default function Home() {
     }
   };
 
-  // Atualiza a lista sempre que a tela ganhar foco (útil após voltar da edição/registro)
   useFocusEffect(
     React.useCallback(() => {
       fetchOccurrences();
     }, []),
   );
 
-  // Função para excluir ocorrência
   const handleDeleteOccurrence = async (id: number) => {
     setDeletingId(id);
     try {
       await occurrenceService.delete(id);
-      // Atualiza a lista localmente removendo o item excluído
-      setAllOccurrences(prev => prev.filter(item => item.id !== id));
+      setAllOccurrences((prev) => prev.filter((item) => item.id !== id));
       Alert.alert("Sucesso", "Ocorrência excluída com sucesso!");
     } catch (error) {
       console.error("Erro ao excluir ocorrência:", error);
@@ -81,44 +135,37 @@ export default function Home() {
     }
   };
 
-  // Função para mostrar confirmação de exclusão
   const showDeleteConfirmation = (item: Occurrence) => {
     Alert.alert(
       "Confirmar Exclusão",
       `Tem certeza que deseja excluir a ocorrência #${item.id}?`,
       [
         { text: "Cancelar", style: "cancel" },
-        { 
-          text: "Excluir", 
+        {
+          text: "Excluir",
           style: "destructive",
-          onPress: () => handleDeleteOccurrence(item.id)
-        }
-      ]
+          onPress: () => handleDeleteOccurrence(item.id),
+        },
+      ],
     );
   };
 
-  // Lógica de Filtragem e Agrupamento
   const sections = useMemo(() => {
     const filtered = allOccurrences.filter((item) => {
-      // Filtro Texto (Título ou ID)
-      // Suporta 'titule' (Java atual) ou 'title' (Correção futura)
       const itemTitle = item.titule || (item as any).title || "";
       const matchSearch = searchText
         ? String(item.id).includes(searchText) ||
           itemTitle.toLowerCase().includes(searchText.toLowerCase())
         : true;
 
-      // Filtro Status
       const matchStatus = filters.status
         ? item.status === filters.status
         : true;
 
-      // Filtro Tipo (ID)
       const matchType = filters.type
         ? String(item.type?.id) === String(filters.type)
         : true;
 
-      // Filtro Data
       let matchDate = true;
       if (filters.startDate) {
         matchDate =
@@ -148,7 +195,6 @@ export default function Home() {
     return result;
   }, [allOccurrences, searchText, filters]);
 
-  // Cores
   const getStatusColor = (s: string) =>
     s === "Em_andamento"
       ? "#FF8C00"
@@ -159,83 +205,88 @@ export default function Home() {
   const getPriorityColor = (p: string) =>
     p === "Alta" ? "#D32F2F" : "#1976D2";
 
-  const renderItem = ({ item }: { item: Occurrence }) => (
-    <TouchableOpacity
-      style={styles.card}
-      onPress={() =>
-        navigation.navigate(
-          "OccurrenceDetails" as never,
-          { occurrenceData: item } as never,
-        )
-      }
-    >
-      <View style={styles.cardHeader}>
-        <View
-          style={[
-            styles.statusIndicator,
-            { backgroundColor: getStatusColor(item.status) },
-          ]}
-        />
-        <View style={{ flex: 1 }}>
-          <Text style={styles.cardTitle}>
-            {(item as any).title}
-          </Text>
-          <Text style={styles.cardSubtitle}>
-            {item.type?.name || "Tipo N/A"} •{" "}
-            {item.address?.street || "Endereço N/A"}
-          </Text>
-        </View>
-        <View style={styles.cardHeaderRight}>
+  const renderItem = ({ item }: { item: Occurrence }) => {
+    // Tratamento seguro para Latitude/Longitude (mesma lógica do Details)
+    const lat = (item as any).latitude ?? (item as any).lat;
+    const lng = (item as any).longitude ?? (item as any).lng;
+
+    return (
+      <TouchableOpacity
+        style={styles.card}
+        onPress={() =>
+          navigation.navigate(
+            "OccurrenceDetails" as never,
+            { occurrenceData: item } as never,
+          )
+        }
+      >
+        <View style={styles.cardHeader}>
           <View
             style={[
-              styles.badge,
-              { backgroundColor: getPriorityBg(item.priority) },
+              styles.statusIndicator,
+              { backgroundColor: getStatusColor(item.status) },
             ]}
-          >
-            <Text
-              style={[
-                styles.badgeText,
-                { color: getPriorityColor(item.priority) },
-              ]}
-            >
-              {item.priority}
+          />
+          <View style={{ flex: 1 }}>
+            <Text style={styles.cardTitle}>{(item as any).title}</Text>
+
+            {/* AQUI ESTÁ A MUDANÇA: AddressResolver */}
+            <Text style={styles.cardSubtitle}>
+              {item.type?.name || "Tipo N/A"} •{" "}
+              <AddressResolver latitude={lat} longitude={lng} />
             </Text>
           </View>
-          
-          {/* Botão de excluir */}
-          <TouchableOpacity
-            style={styles.deleteButton}
-            onPress={(e) => {
-              e.stopPropagation(); // Previne que o clique no botão também acione o onPress do card
-              showDeleteConfirmation(item);
-            }}
-            disabled={deletingId === item.id}
-          >
-            {deletingId === item.id ? (
-              <ActivityIndicator size="small" color="#FF3B30" />
-            ) : (
-              <Feather name="trash-2" size={18} color="#FF3B30" />
-            )}
-          </TouchableOpacity>
+          <View style={styles.cardHeaderRight}>
+            <View
+              style={[
+                styles.badge,
+                { backgroundColor: getPriorityBg(item.priority) },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.badgeText,
+                  { color: getPriorityColor(item.priority) },
+                ]}
+              >
+                {item.priority}
+              </Text>
+            </View>
+
+            <TouchableOpacity
+              style={styles.deleteButton}
+              onPress={(e) => {
+                e.stopPropagation();
+                showDeleteConfirmation(item);
+              }}
+              disabled={deletingId === item.id}
+            >
+              {deletingId === item.id ? (
+                <ActivityIndicator size="small" color="#FF3B30" />
+              ) : (
+                <Feather name="trash-2" size={18} color="#FF3B30" />
+              )}
+            </TouchableOpacity>
+          </View>
         </View>
-      </View>
-      <View style={styles.cardFooter}>
-        <View style={styles.footerInfo}>
-          <Feather
-            name="calendar"
-            size={12}
-            color={theme.colors.textSecondary}
-          />
-          <Text style={styles.dateText}>
-            {item.date
-              ? new Date(item.date).toLocaleDateString("pt-BR")
-              : "--/--"}
-          </Text>
+        <View style={styles.cardFooter}>
+          <View style={styles.footerInfo}>
+            <Feather
+              name="calendar"
+              size={12}
+              color={theme.colors.textSecondary}
+            />
+            <Text style={styles.dateText}>
+              {item.date
+                ? new Date(item.date).toLocaleDateString("pt-BR")
+                : "--/--"}
+            </Text>
+          </View>
+          <Text style={styles.idText}>#{item.id}</Text>
         </View>
-        <Text style={styles.idText}>#{item.id}</Text>
-      </View>
-    </TouchableOpacity>
-  );
+      </TouchableOpacity>
+    );
+  };
 
   return (
     <View style={styles.container}>

@@ -28,7 +28,7 @@ export default function RegisterOccurrence() {
   const [gpsLoading, setGpsLoading] = useState(false);
   const [mediaLoading, setMediaLoading] = useState(false);
 
-  // Estados de Mídia
+  // Mídia
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [videoUri, setVideoUri] = useState<string | null>(null);
 
@@ -38,53 +38,30 @@ export default function RegisterOccurrence() {
   const [envolvidos, setEnvolvidos] = useState("");
   const [prioridade, setPrioridade] = useState<OccurrencePriority>("Baixa");
   const [tipoId, setTipoId] = useState("1");
-
-  // Endereço e Coordenadas
   const [rua, setRua] = useState("");
   const [numero, setNumero] = useState("");
   const [complemento, setComplemento] = useState("");
+  const [bairroId, setBairroId] = useState("1");
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(
     null,
   );
 
-  // --- CÂMERA ---
+  // --- MÍDIA ---
   const handleTakePhoto = async () => {
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
     if (status !== "granted")
-      return Alert.alert("Permissão negada", "Precisamos da câmera.");
+      return Alert.alert("Permissão", "Precisamos da câmera.");
 
     setMediaLoading(true);
-    try {
-      const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        quality: 0.7,
-      });
-      if (!result.canceled) {
-        setPhotoUri(result.assets[0].uri);
-        setVideoUri(null);
-      }
-    } finally {
-      setMediaLoading(false);
-    }
-  };
+    const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.7,
+    });
+    setMediaLoading(false);
 
-  const handleRecordVideo = async () => {
-    const { status } = await ImagePicker.requestCameraPermissionsAsync();
-    if (status !== "granted")
-      return Alert.alert("Permissão negada", "Precisamos da câmera.");
-
-    setMediaLoading(true);
-    try {
-      const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Videos,
-        videoMaxDuration: 30,
-      });
-      if (!result.canceled) {
-        setVideoUri(result.assets[0].uri);
-        setPhotoUri(null);
-      }
-    } finally {
-      setMediaLoading(false);
+    if (!result.canceled) {
+      setPhotoUri(result.assets[0].uri);
+      setVideoUri(null);
     }
   };
 
@@ -94,7 +71,7 @@ export default function RegisterOccurrence() {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== "granted")
-        return Alert.alert("Permissão negada", "Habilite a localização.");
+        return Alert.alert("Permissão", "Habilite a localização.");
 
       const location = await Location.getCurrentPositionAsync({
         accuracy: Location.Accuracy.High,
@@ -110,10 +87,10 @@ export default function RegisterOccurrence() {
         const addr = addressResponse[0];
         setRua(addr.street || "");
         setNumero(addr.streetNumber || "");
-        Alert.alert("Localização", "Endereço preenchido via GPS.");
+        Alert.alert("Localização", "Endereço preenchido.");
       }
     } catch (error) {
-      Alert.alert("Erro no GPS", "Não foi possível obter localização.");
+      Alert.alert("Erro", "Falha no GPS.");
     } finally {
       setGpsLoading(false);
     }
@@ -121,10 +98,8 @@ export default function RegisterOccurrence() {
 
   async function handleRegister() {
     if (!titulo) return Alert.alert("Erro", "O título é obrigatório.");
-
     setLoading(true);
     try {
-      // 1. Garante coordenadas
       let finalLat = coords?.lat;
       let finalLng = coords?.lng;
 
@@ -140,40 +115,33 @@ export default function RegisterOccurrence() {
         } catch (e) {}
       }
 
-      // 2. Prepara o FormData (Mudança Principal!)
+      // MONTAR FORM DATA
       const formData = new FormData();
-
-      // Campos de Texto (@RequestPart String)
-      formData.append("title", titulo); // Mudou de 'titule' para 'title'
-      formData.append("data", new Date().toISOString()); // Mudou de 'date' para 'data'
+      formData.append("title", titulo);
+      formData.append("data", new Date().toISOString());
       formData.append("victims", envolvidos);
       formData.append("details", detalhes);
       formData.append("status", "Em_andamento");
       formData.append("priority", prioridade);
-      formData.append("latitude", String(finalLat || "0.0")); // Backend pede String
-      formData.append("longitude", String(finalLng || "0.0")); // Backend pede String
-      formData.append("occurrencetype", tipoId); // Backend pede 'occurrencetype'
+      formData.append("latitude", String(finalLat || "0.0"));
+      formData.append("longitude", String(finalLng || "0.0"));
+      formData.append("occurrencetype", tipoId);
 
-      // Arquivo de Mídia (@RequestPart images)
       if (photoUri) {
         const filename = photoUri.split("/").pop();
         const match = /\.(\w+)$/.exec(filename || "");
         const type = match ? `image/${match[1]}` : `image`;
-
-        // @ts-ignore: O React Native precisa desse objeto específico para upload
+        // @ts-ignore
         formData.append("images", { uri: photoUri, name: filename, type });
       } else if (videoUri) {
         const filename = videoUri.split("/").pop();
         const match = /\.(\w+)$/.exec(filename || "");
         const type = match ? `video/${match[1]}` : `video`;
-
         // @ts-ignore
         formData.append("images", { uri: videoUri, name: filename, type });
       }
 
-      // Envia para o serviço
       await occurrenceService.create(formData);
-
       Alert.alert("Sucesso", "Ocorrência registrada!");
       navigation.goBack();
     } catch (error: any) {
@@ -240,14 +208,14 @@ export default function RegisterOccurrence() {
           ) : (
             <>
               <Feather name="map-pin" size={14} color="#FFF" />
-              <Text style={styles.gpsButtonText}> Usar Localização Atual</Text>
+              <Text style={styles.gpsButtonText}>Usar Localização Atual</Text>
             </>
           )}
         </TouchableOpacity>
       </View>
       <TextInput
         style={styles.input}
-        placeholder="Rua *"
+        placeholder="Rua"
         value={rua}
         onChangeText={setRua}
         placeholderTextColor={theme.colors.textSecondary}
@@ -255,7 +223,7 @@ export default function RegisterOccurrence() {
       <View style={styles.row}>
         <TextInput
           style={[styles.input, { flex: 1, marginRight: 10 }]}
-          placeholder="Nº *"
+          placeholder="Número"
           value={numero}
           onChangeText={setNumero}
           placeholderTextColor={theme.colors.textSecondary}
@@ -302,25 +270,17 @@ export default function RegisterOccurrence() {
           <Feather name="camera" size={24} color={theme.colors.text} />
           <Text style={styles.mediaText}>Foto</Text>
         </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.mediaButton}
-          onPress={handleRecordVideo}
-          disabled={mediaLoading}
-        >
-          <MaterialIcons name="videocam" size={24} color={theme.colors.text} />
-          <Text style={styles.mediaText}>Vídeo</Text>
-        </TouchableOpacity>
       </View>
 
-      {mediaLoading && (
-        <ActivityIndicator
-          color={theme.colors.primary}
-          style={{ marginBottom: 10 }}
-        />
-      )}
-
+      {mediaLoading && <ActivityIndicator color={theme.colors.primary} />}
       {photoUri && (
-        <View style={{ alignItems: "center", position: "relative" }}>
+        <View
+          style={{
+            alignItems: "center",
+            position: "relative",
+            marginBottom: 10,
+          }}
+        >
           <Image
             source={{ uri: photoUri }}
             style={{ width: 200, height: 200, borderRadius: 10 }}
@@ -334,7 +294,13 @@ export default function RegisterOccurrence() {
         </View>
       )}
       {videoUri && (
-        <View style={{ alignItems: "center", position: "relative" }}>
+        <View
+          style={{
+            alignItems: "center",
+            position: "relative",
+            marginBottom: 10,
+          }}
+        >
           <View
             style={{
               width: 200,
@@ -347,9 +313,7 @@ export default function RegisterOccurrence() {
           >
             <MaterialIcons name="play-circle-filled" size={50} color="#FFF" />
           </View>
-          <Text style={{ color: theme.colors.text, marginTop: 5 }}>
-            Vídeo gravado!
-          </Text>
+          <Text style={{ color: theme.colors.text }}>Vídeo gravado!</Text>
           <TouchableOpacity
             onPress={() => setVideoUri(null)}
             style={styles.removeMedia}
@@ -362,7 +326,7 @@ export default function RegisterOccurrence() {
       <TouchableOpacity
         style={styles.button}
         onPress={handleRegister}
-        disabled={loading || mediaLoading}
+        disabled={loading}
       >
         {loading ? (
           <ActivityIndicator color="#FFF" />
@@ -440,7 +404,7 @@ const createStyles = (theme: any) =>
       padding: 10,
       backgroundColor: theme.colors.card,
       borderRadius: 10,
-      width: "40%",
+      width: "50%",
       borderWidth: 1,
       borderColor: theme.colors.border,
     },

@@ -19,15 +19,12 @@ export default function EditOccurrence() {
   const navigation = useNavigation();
   const route = useRoute<any>();
   const { occurrenceData } = route.params;
-
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
-
   const [loading, setLoading] = useState(false);
 
-  // Inicialização segura
   const [titulo, setTitulo] = useState(
-    occurrenceData.titule || (occurrenceData as any).title || "",
+    occurrenceData.titule || occurrenceData.title || "",
   );
   const [detalhes, setDetalhes] = useState(occurrenceData.details || "");
   const [envolvidos, setEnvolvidos] = useState(occurrenceData.victims || "");
@@ -39,17 +36,16 @@ export default function EditOccurrence() {
   async function handleUpdate() {
     setLoading(true);
     try {
-      // Cria objeto de atualização mantendo ID e outros campos
-      const updatedData = new FormData();
-
-        updatedData.append("title", titulo); // Mudou de 'titule' para 'title'
-        updatedData.append("victims", envolvidos);
-        updatedData.append("details", detalhes);
-        updatedData.append("status", status);
-        updatedData.append("priority", prioridade);
+      const updatedData: Occurrence = {
+        ...occurrenceData,
+        titule: titulo,
+        victims: envolvidos,
+        details: detalhes,
+        priority: prioridade,
+        status: status,
+      };
       await occurrenceService.update(occurrenceData.id, updatedData);
-
-      Alert.alert("Sucesso", "Ocorrência atualizada!");
+      Alert.alert("Sucesso", "Atualizado!");
       navigation.navigate("Home" as never);
     } catch (error: any) {
       Alert.alert("Erro", error.message);
@@ -61,10 +57,8 @@ export default function EditOccurrence() {
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <Text style={styles.title}>Editar Ocorrência #{occurrenceData.id}</Text>
-
       <Text style={styles.label}>Título</Text>
       <TextInput style={styles.input} value={titulo} onChangeText={setTitulo} />
-
       <Text style={styles.label}>Status</Text>
       <View style={styles.pickerContainer}>
         <Picker
@@ -78,7 +72,6 @@ export default function EditOccurrence() {
           <Picker.Item label="Cancelada" value="Cancelada" />
         </Picker>
       </View>
-
       <Text style={styles.label}>Prioridade</Text>
       <View style={styles.pickerContainer}>
         <Picker
@@ -92,22 +85,19 @@ export default function EditOccurrence() {
           <Picker.Item label="Alta" value="Alta" />
         </Picker>
       </View>
-
       <Text style={styles.label}>Envolvidos</Text>
       <TextInput
         style={styles.input}
         value={envolvidos}
         onChangeText={setEnvolvidos}
       />
-
       <Text style={styles.label}>Detalhes</Text>
       <TextInput
-        style={[styles.input, { height: 100, textAlignVertical: "top" }]}
+        style={[styles.input, { height: 100 }]}
         value={detalhes}
         onChangeText={setDetalhes}
         multiline
       />
-
       <TouchableOpacity
         style={styles.button}
         onPress={handleUpdate}
@@ -116,7 +106,7 @@ export default function EditOccurrence() {
         {loading ? (
           <ActivityIndicator color="#FFF" />
         ) : (
-          <Text style={styles.buttonText}>Salvar Alterações</Text>
+          <Text style={styles.buttonText}>Salvar</Text>
         )}
       </TouchableOpacity>
     </ScrollView>
@@ -128,24 +118,19 @@ const createStyles = (theme: any) =>
     container: { flex: 1, backgroundColor: theme.colors.background },
     content: { padding: 20, paddingBottom: 50 },
     title: {
-      fontSize: 22 * theme.fontScale,
+      fontSize: 22,
       fontWeight: "bold",
       color: theme.colors.primary,
       marginBottom: 20,
       textAlign: "center",
     },
-    label: {
-      fontSize: 16 * theme.fontScale,
-      color: theme.colors.text,
-      marginBottom: 5,
-      fontWeight: "500",
-    },
+    label: { fontSize: 16, color: theme.colors.text, marginBottom: 5 },
     input: {
       backgroundColor: theme.colors.card,
       borderRadius: 8,
       padding: 12,
       marginBottom: 15,
-      fontSize: 16 * theme.fontScale,
+      fontSize: 16,
       color: theme.colors.text,
       borderWidth: 1,
       borderColor: theme.colors.border,
@@ -164,9 +149,5 @@ const createStyles = (theme: any) =>
       alignItems: "center",
       marginTop: 20,
     },
-    buttonText: {
-      color: "#FFF",
-      fontSize: 18 * theme.fontScale,
-      fontWeight: "bold",
-    },
+    buttonText: { color: "#FFF", fontSize: 18, fontWeight: "bold" },
   });

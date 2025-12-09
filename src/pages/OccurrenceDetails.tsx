@@ -1,16 +1,25 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useEffect, useState } from "react";
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  Image,
+  Dimensions,
+  ActivityIndicator, // Adicionado para feedback visual
 } from "react-native";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import MapView, { Marker } from "react-native-maps";
+import * as Location from "expo-location";
 import { useTheme } from "../contexts/ThemeContext";
 import { Occurrence } from "../types";
+
+// --- IMPORTANTE: ---
+// Coloque aqui a mesma URL base que você usou no navegador (até a parte /database)
+// Se você já tem isso em um arquivo de configuração (ex: services/api.ts), importe de lá.
+const API_BASE_URL = "https://hastily-preaseptic-myrle.ngrok-free.dev/database";
 
 export default function OccurrenceDetails() {
   const navigation = useNavigation();
@@ -18,10 +27,15 @@ export default function OccurrenceDetails() {
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
-  // Recebe dados da Home
+  const [displayAddress, setDisplayAddress] = useState(
+    "Carregando endereço...",
+  );
+  const [imgError, setImgError] = useState(false); // Estado para controlar erro na imagem
+
   const { occurrenceData } = route.params || {};
 
-  if (!occurrenceData) {  
+  // Validação inicial
+  if (!occurrenceData) {
     return (
       <View style={styles.container}>
         <Text
@@ -50,16 +64,62 @@ export default function OccurrenceDetails() {
 
   const occurrence: Occurrence = occurrenceData;
   const itemTitle =
-    occurrence.titule || (occurrence as any).title || "Sem Título";
+    (occurrence as any).title || (occurrence as any).titule || "Ocorrência";
 
-  // Coordenadas seguras
-  const hasCoords = occurrence.lat && occurrence.lng && occurrence.lat !== 0;
+  // --- TRATAMENTO DE COORDENADAS ---
+  const rawLat = (occurrence as any).latitude ?? (occurrence as any).lat;
+  const rawLng = (occurrence as any).longitude ?? (occurrence as any).lng;
+  const latNum = Number(rawLat);
+  const lngNum = Number(rawLng);
+  const hasCoords =
+    !isNaN(latNum) && !isNaN(lngNum) && latNum !== 0 && lngNum !== 0;
+
+  // --- NOVA LÓGICA DA IMAGEM ---
+  // Montamos a URL direta para o endpoint que funcionou no navegador.
+  // Exemplo final: .../database/occurrence/10/images
+  // Adicionamos um timestamp (?t=...) para evitar que o celular use cache velho se a foto mudar.
+  const imageUrl = `${API_BASE_URL}/occurrence/${occurrence.id}/images?t=${new Date().getTime()}`;
+
   const initialRegion = {
-    latitude: hasCoords ? occurrence.lat! : -8.047,
-    longitude: hasCoords ? occurrence.lng! : -34.877,
-    latitudeDelta: 0.01,
-    longitudeDelta: 0.01,
+    latitude: hasCoords ? latNum : -8.047,
+    longitude: hasCoords ? lngNum : -34.877,
+    latitudeDelta: 0.005,
+    longitudeDelta: 0.005,
   };
+
+  useEffect(() => {
+    async function fetchAddress() {
+      if (hasCoords) {
+        try {
+          const addressResponse = await Location.reverseGeocodeAsync({
+            latitude: latNum,
+            longitude: lngNum,
+          });
+
+          if (addressResponse.length > 0) {
+            const addr = addressResponse[0];
+            const street = addr.street || "Rua não identificada";
+            const number = addr.streetNumber || "S/N";
+            const district = addr.district || "";
+
+            let formatted = `${street}, ${number}`;
+            if (district) formatted += ` - ${district}`;
+
+            setDisplayAddress(formatted);
+          } else {
+            setDisplayAddress("Endereço não encontrado no mapa.");
+          }
+        } catch (error) {
+          console.log("Erro geocoding:", error);
+          setDisplayAddress("Endereço indisponível.");
+        }
+      } else {
+        setDisplayAddress("Localização não registrada.");
+      }
+    }
+
+    fetchAddress();
+  }, [hasCoords, latNum, lngNum]);
 
   return (
     <View style={styles.container}>
@@ -71,7 +131,7 @@ export default function OccurrenceDetails() {
           <Feather name="arrow-left" size={24} color={theme.colors.white} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Detalhes #{occurrence.id}</Text>
-        {/* Botão Editar */}
+
         <TouchableOpacity
           style={styles.backButton}
           onPress={() =>
@@ -86,13 +146,19 @@ export default function OccurrenceDetails() {
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
+        {/* MAPA */}
         <View style={styles.mapContainer}>
-          <MapView style={styles.map} initialRegion={initialRegion}>
+          <MapView
+            style={styles.map}
+            region={initialRegion}
+            scrollEnabled={false}
+            zoomEnabled={false}
+          >
             {hasCoords && (
               <Marker
                 coordinate={{
-                  latitude: occurrence.lat!,
-                  longitude: occurrence.lng!,
+                  latitude: latNum,
+                  longitude: lngNum,
                 }}
               />
             )}
@@ -103,19 +169,60 @@ export default function OccurrenceDetails() {
               size={16}
               color={theme.colors.primary}
             />
-            <Text style={styles.addressText}>
-              {occurrence.address
-                ? `${occurrence.address.street}, ${occurrence.address.number}`
-                : "Endereço não disponível"}
-            </Text>
+            <Text style={styles.addressText}>{displayAddress}</Text>
           </View>
         </View>
+
+        {/* --- SEÇÃO DA IMAGEM --- */}
+        {/* Se não deu erro, tentamos exibir. Se der erro, escondemos ou mostramos aviso. */}
+        {!imgError && (
+          <View style={styles.imageContainer}>
+            <Image
+              key={imageUrl} // Força recarregar se a URL mudar
+              source={{ uri: imageUrl }}
+              style={styles.occurrenceImage}
+              resizeMode="cover"
+              onError={(e) => {
+                console.log("Erro ao carregar imagem da URL: ", imageUrl);
+                console.log("Detalhe do erro:", e.nativeEvent.error);
+                setImgError(true);
+              }}
+            />
+            <View style={styles.imageBadge}>
+              <Feather name="image" size={12} color="#FFF" />
+              <Text style={styles.imageBadgeText}>Foto do Local</Text>
+            </View>
+          </View>
+        )}
+
+        {/* Placeholder caso não tenha imagem ou tenha dado erro */}
+        {imgError && (
+          <View
+            style={[
+              styles.imageContainer,
+              {
+                justifyContent: "center",
+                alignItems: "center",
+                backgroundColor: theme.colors.border,
+              },
+            ]}
+          >
+            <Feather
+              name="image"
+              size={40}
+              color={theme.colors.textSecondary}
+            />
+            <Text style={{ color: theme.colors.textSecondary, marginTop: 10 }}>
+              Imagem indisponível
+            </Text>
+          </View>
+        )}
 
         <View style={styles.mainCard}>
           <Text style={styles.occurrenceTitle}>{itemTitle}</Text>
           <View style={styles.rowBetween}>
             <Text style={styles.occurrenceType}>
-              {occurrence.type?.name || "Tipo N/A"}
+              {occurrence.type?.name || "Tipo não informado"}
             </Text>
             <View style={[styles.statusBadge]}>
               <Text style={styles.statusText}>{occurrence.status}</Text>
@@ -158,12 +265,14 @@ const createStyles = (theme: any) =>
     },
     backButton: { padding: 5 },
     content: { padding: 20, paddingBottom: 40 },
+
     mapContainer: {
       height: 200,
       borderRadius: 12,
       overflow: "hidden",
       marginBottom: 20,
       backgroundColor: theme.colors.border,
+      position: "relative",
     },
     map: { width: "100%", height: "100%" },
     addressBar: {
@@ -171,18 +280,50 @@ const createStyles = (theme: any) =>
       bottom: 0,
       left: 0,
       right: 0,
-      backgroundColor: theme.colors.card,
+      backgroundColor: "rgba(0,0,0,0.7)",
       padding: 10,
       flexDirection: "row",
       alignItems: "center",
       gap: 6,
-      opacity: 0.9,
     },
     addressText: {
       fontSize: 12 * theme.fontScale,
-      color: theme.colors.text,
+      color: "#FFF",
       flex: 1,
     },
+
+    imageContainer: {
+      height: 220,
+      borderRadius: 12,
+      overflow: "hidden",
+      marginBottom: 20,
+      backgroundColor: theme.colors.card,
+      position: "relative",
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+    },
+    occurrenceImage: {
+      width: "100%",
+      height: "100%",
+    },
+    imageBadge: {
+      position: "absolute",
+      top: 10,
+      right: 10,
+      backgroundColor: "rgba(0,0,0,0.6)",
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      borderRadius: 8,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 4,
+    },
+    imageBadgeText: {
+      color: "#FFF",
+      fontSize: 10,
+      fontWeight: "bold",
+    },
+
     mainCard: {
       backgroundColor: theme.colors.card,
       padding: 20,

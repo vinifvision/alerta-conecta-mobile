@@ -1,19 +1,17 @@
-// src/types/index.ts
-
 export interface User {
   status?: string;
-
   name: string;
   role: string;
-  registry: string; // Matrícula
+  registry: string;
   phone: string;
   email: string;
-  avatarUrl: string; // URL da foto de perfil
+  avatarUrl: string; // Novo
   cpf: string;
 }
 
 export type OccurrenceStatus = "Em_andamento" | "Encerrada" | "Cancelada";
-export type OccurrencePriority = "Baixa" | "Media" | "Alta";
+export type OccurrencePriority = "Baixa" | "Media" | "Alta" | "Critica";
+
 export type BackendAddress = {
   street: string;
   number: string;
@@ -30,19 +28,20 @@ export type BackendType = {
 export type Occurrence = {
   id: number;
   titule?: string | null;
+  title?: string | null;
   date: string;
   victims: string | null;
   details: string | null;
   status: OccurrenceStatus;
   priority: OccurrencePriority;
-
   type: BackendType;
   address?: BackendAddress | null;
-
-  // Deixe lat/lng opcionais para não quebrar com dados antigos
   lat?: number | null;
   lng?: number | null;
 
+  images?: string[];
+
+  // Mantemos este para compatibilidade antiga
   imageUrl?: string | null;
 };
 
