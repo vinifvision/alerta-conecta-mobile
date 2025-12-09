@@ -404,7 +404,7 @@ const createStyles = (theme: any) =>
       padding: 10,
       backgroundColor: theme.colors.card,
       borderRadius: 10,
-      width: "40%",
+      width: "50%",
       borderWidth: 1,
       borderColor: theme.colors.border,
     },
