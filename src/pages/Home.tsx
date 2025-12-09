@@ -11,7 +11,7 @@ import {
 } from "react-native";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { Feather } from "@expo/vector-icons";
-import * as Location from "expo-location"; // <--- Importação adicionada
+import * as Location from "expo-location"; // <--- 1. Importação necessária
 import { useAuth } from "../contexts/AuthContext";
 import { useTheme } from "../contexts/ThemeContext";
 import { Occurrence } from "../types";
@@ -25,7 +25,7 @@ type SectionData = {
   count: number;
 };
 
-// --- Componente auxiliar para resolver Endereço na lista ---
+// --- 2. Componente Auxiliar para resolver endereço na lista ---
 const AddressResolver = ({
   latitude,
   longitude,
@@ -39,11 +39,10 @@ const AddressResolver = ({
     let isMounted = true;
 
     const resolve = async () => {
-      // Normaliza dados para número
       const latNum = Number(latitude);
       const lngNum = Number(longitude);
 
-      // Valida coordenadas
+      // Se não tiver coordenada válida, mostra msg padrão
       if (isNaN(latNum) || isNaN(lngNum) || (latNum === 0 && lngNum === 0)) {
         if (isMounted) setAddrText("Localização não reg.");
         return;
@@ -58,12 +57,12 @@ const AddressResolver = ({
         if (isMounted) {
           if (result.length > 0) {
             const i = result[0];
-            // Formata: "Rua X, 123" ou apenas a rua
-            const street = i.street || "Rua desconhecida";
+            // Formata curto para caber no card: "Rua X, 123"
+            const street = i.street || "Rua desc.";
             const number = i.streetNumber || "S/N";
             setAddrText(`${street}, ${number}`);
           } else {
-            setAddrText("Endereço não enc.");
+            setAddrText("Endereço desconhecido");
           }
         }
       } catch (error) {
@@ -74,13 +73,13 @@ const AddressResolver = ({
     resolve();
 
     return () => {
-      isMounted = false;
+      isMounted = false; // Evita erro se o usuário rolar a lista rápido
     };
   }, [latitude, longitude]);
 
   return <Text>{addrText}</Text>;
 };
-// -----------------------------------------------------------
+// -------------------------------------------------------------
 
 export default function Home() {
   const { user, logout } = useAuth();
@@ -206,7 +205,7 @@ export default function Home() {
     p === "Alta" ? "#D32F2F" : "#1976D2";
 
   const renderItem = ({ item }: { item: Occurrence }) => {
-    // Tratamento seguro para Latitude/Longitude (mesma lógica do Details)
+    // 3. Normalização das coordenadas (igual fizemos na tela de Detalhes)
     const lat = (item as any).latitude ?? (item as any).lat;
     const lng = (item as any).longitude ?? (item as any).lng;
 
@@ -230,7 +229,7 @@ export default function Home() {
           <View style={{ flex: 1 }}>
             <Text style={styles.cardTitle}>{(item as any).title}</Text>
 
-            {/* AQUI ESTÁ A MUDANÇA: AddressResolver */}
+            {/* 4. Uso do AddressResolver dentro do texto */}
             <Text style={styles.cardSubtitle}>
               {item.type?.name || "Tipo N/A"} •{" "}
               <AddressResolver latitude={lat} longitude={lng} />
