@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Image,
   Dimensions,
+  ActivityIndicator, // Adicionado para feedback visual
 } from "react-native";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
@@ -15,7 +16,10 @@ import * as Location from "expo-location";
 import { useTheme } from "../contexts/ThemeContext";
 import { Occurrence } from "../types";
 
-const { width } = Dimensions.get("window");
+// --- IMPORTANTE: ---
+// Coloque aqui a mesma URL base que você usou no navegador (até a parte /database)
+// Se você já tem isso em um arquivo de configuração (ex: services/api.ts), importe de lá.
+const API_BASE_URL = "https://hastily-preaseptic-myrle.ngrok-free.dev/database";
 
 export default function OccurrenceDetails() {
   const navigation = useNavigation();
@@ -26,9 +30,11 @@ export default function OccurrenceDetails() {
   const [displayAddress, setDisplayAddress] = useState(
     "Carregando endereço...",
   );
+  const [imgError, setImgError] = useState(false); // Estado para controlar erro na imagem
 
   const { occurrenceData } = route.params || {};
 
+  // Validação inicial
   if (!occurrenceData) {
     return (
       <View style={styles.container}>
@@ -68,23 +74,11 @@ export default function OccurrenceDetails() {
   const hasCoords =
     !isNaN(latNum) && !isNaN(lngNum) && latNum !== 0 && lngNum !== 0;
 
-  // --- CORREÇÃO DA IMAGEM ---
-  // 1. Pega a lista de imagens vinda do backend
-  const imagesList = (occurrence as any).images || [];
-
-  // 2. Pega a primeira imagem, se existir
-  let rawImage = imagesList.length > 0 ? imagesList[0] : null;
-
-  // Fallback para campos antigos
-  if (!rawImage) {
-    rawImage =
-      (occurrence as any).fileUrl || (occurrence as any).imageUrl || null;
-  }
-
-  // 3. Tratamento PROVISÓRIO para o problema do "file:///D:/"
-  // O app não consegue ler D:/ do servidor. Isso deveria ser uma URL http.
-  // Se estiver testando no emulador e o backend for local, isso não vai carregar a menos que o backend sirva o arquivo.
-  const imageUrl = rawImage;
+  // --- NOVA LÓGICA DA IMAGEM ---
+  // Montamos a URL direta para o endpoint que funcionou no navegador.
+  // Exemplo final: .../database/occurrence/10/images
+  // Adicionamos um timestamp (?t=...) para evitar que o celular use cache velho se a foto mudar.
+  const imageUrl = `${API_BASE_URL}/occurrence/${occurrence.id}/images?t=${new Date().getTime()}`;
 
   const initialRegion = {
     latitude: hasCoords ? latNum : -8.047,
@@ -152,6 +146,7 @@ export default function OccurrenceDetails() {
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
+        {/* MAPA */}
         <View style={styles.mapContainer}>
           <MapView
             style={styles.map}
@@ -178,25 +173,50 @@ export default function OccurrenceDetails() {
           </View>
         </View>
 
-        {/* Exibe a imagem se existir */}
-        {imageUrl ? (
+        {/* --- SEÇÃO DA IMAGEM --- */}
+        {/* Se não deu erro, tentamos exibir. Se der erro, escondemos ou mostramos aviso. */}
+        {!imgError && (
           <View style={styles.imageContainer}>
             <Image
-              // Se a URL começar com http ou file:// o React Native tenta carregar
+              key={imageUrl} // Força recarregar se a URL mudar
               source={{ uri: imageUrl }}
               style={styles.occurrenceImage}
               resizeMode="cover"
-              // Adiciona um fallback visual caso a imagem falhe (muito provável com caminho D:/)
-              onError={(e) =>
-                console.log("Erro ao carregar imagem: ", e.nativeEvent.error)
-              }
+              onError={(e) => {
+                console.log("Erro ao carregar imagem da URL: ", imageUrl);
+                console.log("Detalhe do erro:", e.nativeEvent.error);
+                setImgError(true);
+              }}
             />
             <View style={styles.imageBadge}>
               <Feather name="image" size={12} color="#FFF" />
-              <Text style={styles.imageBadgeText}>Anexo</Text>
+              <Text style={styles.imageBadgeText}>Foto do Local</Text>
             </View>
           </View>
-        ) : null}
+        )}
+
+        {/* Placeholder caso não tenha imagem ou tenha dado erro */}
+        {imgError && (
+          <View
+            style={[
+              styles.imageContainer,
+              {
+                justifyContent: "center",
+                alignItems: "center",
+                backgroundColor: theme.colors.border,
+              },
+            ]}
+          >
+            <Feather
+              name="image"
+              size={40}
+              color={theme.colors.textSecondary}
+            />
+            <Text style={{ color: theme.colors.textSecondary, marginTop: 10 }}>
+              Imagem indisponível
+            </Text>
+          </View>
+        )}
 
         <View style={styles.mainCard}>
           <Text style={styles.occurrenceTitle}>{itemTitle}</Text>

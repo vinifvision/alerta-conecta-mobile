@@ -28,7 +28,7 @@ export type BackendType = {
 export type Occurrence = {
   id: number;
   titule?: string | null;
-  title?: string | null; // Suporte para ambos os nomes
+  title?: string | null;
   date: string;
   victims: string | null;
   details: string | null;
