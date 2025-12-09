@@ -7,6 +7,7 @@ import {
   StatusBar,
   Text,
   ActivityIndicator,
+  Alert,
 } from "react-native";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { Feather } from "@expo/vector-icons";
@@ -31,6 +32,7 @@ export default function Home() {
 
   const [allOccurrences, setAllOccurrences] = useState<Occurrence[]>([]);
   const [loading, setLoading] = useState(true);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
 
   // Busca texto
   const [searchText, setSearchText] = useState("");
@@ -62,6 +64,38 @@ export default function Home() {
       fetchOccurrences();
     }, []),
   );
+
+  // Função para excluir ocorrência
+  const handleDeleteOccurrence = async (id: number) => {
+    setDeletingId(id);
+    try {
+      await occurrenceService.delete(id);
+      // Atualiza a lista localmente removendo o item excluído
+      setAllOccurrences(prev => prev.filter(item => item.id !== id));
+      Alert.alert("Sucesso", "Ocorrência excluída com sucesso!");
+    } catch (error) {
+      console.error("Erro ao excluir ocorrência:", error);
+      Alert.alert("Erro", "Não foi possível excluir a ocorrência.");
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  // Função para mostrar confirmação de exclusão
+  const showDeleteConfirmation = (item: Occurrence) => {
+    Alert.alert(
+      "Confirmar Exclusão",
+      `Tem certeza que deseja excluir a ocorrência #${item.id}?`,
+      [
+        { text: "Cancelar", style: "cancel" },
+        { 
+          text: "Excluir", 
+          style: "destructive",
+          onPress: () => handleDeleteOccurrence(item.id)
+        }
+      ]
+    );
+  };
 
   // Lógica de Filtragem e Agrupamento
   const sections = useMemo(() => {
@@ -144,27 +178,45 @@ export default function Home() {
         />
         <View style={{ flex: 1 }}>
           <Text style={styles.cardTitle}>
-            {item.titule || (item as any).title || "Sem Título"}
+            {(item as any).title}
           </Text>
           <Text style={styles.cardSubtitle}>
             {item.type?.name || "Tipo N/A"} •{" "}
             {item.address?.street || "Endereço N/A"}
           </Text>
         </View>
-        <View
-          style={[
-            styles.badge,
-            { backgroundColor: getPriorityBg(item.priority) },
-          ]}
-        >
-          <Text
+        <View style={styles.cardHeaderRight}>
+          <View
             style={[
-              styles.badgeText,
-              { color: getPriorityColor(item.priority) },
+              styles.badge,
+              { backgroundColor: getPriorityBg(item.priority) },
             ]}
           >
-            {item.priority}
-          </Text>
+            <Text
+              style={[
+                styles.badgeText,
+                { color: getPriorityColor(item.priority) },
+              ]}
+            >
+              {item.priority}
+            </Text>
+          </View>
+          
+          {/* Botão de excluir */}
+          <TouchableOpacity
+            style={styles.deleteButton}
+            onPress={(e) => {
+              e.stopPropagation(); // Previne que o clique no botão também acione o onPress do card
+              showDeleteConfirmation(item);
+            }}
+            disabled={deletingId === item.id}
+          >
+            {deletingId === item.id ? (
+              <ActivityIndicator size="small" color="#FF3B30" />
+            ) : (
+              <Feather name="trash-2" size={18} color="#FF3B30" />
+            )}
+          </TouchableOpacity>
         </View>
       </View>
       <View style={styles.cardFooter}>
@@ -336,6 +388,11 @@ const createStyles = (theme: any) =>
       alignItems: "flex-start",
       marginBottom: 12,
     },
+    cardHeaderRight: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+    },
     statusIndicator: {
       width: 10,
       height: 10,
@@ -357,9 +414,13 @@ const createStyles = (theme: any) =>
       paddingHorizontal: 8,
       paddingVertical: 4,
       borderRadius: 8,
-      marginLeft: 8,
     },
     badgeText: { fontSize: 12 * theme.fontScale, fontWeight: "bold" },
+    deleteButton: {
+      padding: 6,
+      borderRadius: 6,
+      backgroundColor: "rgba(255, 59, 48, 0.1)",
+    },
     cardFooter: {
       flexDirection: "row",
       justifyContent: "space-between",
