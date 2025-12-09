@@ -4,7 +4,7 @@ import { MOCK_USER } from "./mockData";
 
 const API_URL =
   "https://alerta-conecta-backend-production.up.railway.app/database";
-const USE_MOCK = true; // Alterado para FALSE para usar o backend real
+const USE_MOCK = false; // Alterado para FALSE para usar o backend real
 
 export const authService = {
   login: async (cpf: string, pass: string): Promise<User> => {

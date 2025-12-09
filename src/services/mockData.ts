@@ -2,15 +2,15 @@ import { Occurrence, User, FilterOption } from "../types";
 
 export const MOCK_USER: User = {
   status: "sucesso",
-  name: "Desenvolvedor Gerente (Mock)",
-  email: "dev@mock.com",
-  role: "Gerente",
-  cpf: "000.000.000-00",
-  registry: "MAT-2024-DEV",
-  phone: "(81) 99999-8888",
+  name: "Sargento Peixoto",
+  email: "peixoto@bombeiros.pe.gov.br",
+  role: "Comandante de Operações",
+  registry: "MAT-998877",
+  phone: "(81) 99999-1234",
+  cpf: "123.456.789-00",
+  avatarUrl: "",
 };
 
-// ESTRUTURA CORRIGIDA (Compatível com Home e Details)
 export const MOCK_OCCURRENCES: Occurrence[] = [
   {
     id: 101,

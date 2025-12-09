@@ -3,7 +3,7 @@ import { MOCK_OCCURRENCES } from "./mockData";
 
 const API_URL =
   "https://alerta-conecta-backend-production.up.railway.app/database/occurrence";
-const USE_MOCK = true; // Mantenha TRUE para testar localmente antes de conectar
+const USE_MOCK = false; // Mantenha TRUE para testar localmente antes de conectar
 
 export const occurrenceService = {
   getAll: async (): Promise<Occurrence[]> => {
