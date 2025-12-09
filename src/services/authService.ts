@@ -2,8 +2,7 @@
 import { User } from "../types";
 import { MOCK_USER } from "./mockData";
 
-const API_URL =
-  "https://hastily-preaseptic-myrle.ngrok-free.dev/database/user";
+const API_URL = "https://hastily-preaseptic-myrle.ngrok-free.dev/database/user";
 const USE_MOCK = false; // Alterado para FALSE para usar o backend real
 
 export const authService = {

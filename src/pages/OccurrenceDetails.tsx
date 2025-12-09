@@ -1,14 +1,18 @@
-import React, { useMemo } from "react";
+// src/pages/OccurrenceDetails.tsx
+
+import React, { useMemo, useEffect, useState } from "react";
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  Alert,
 } from "react-native";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import MapView, { Marker } from "react-native-maps";
+import * as Location from "expo-location";
 import { useTheme } from "../contexts/ThemeContext";
 import { Occurrence } from "../types";
 
@@ -18,10 +22,14 @@ export default function OccurrenceDetails() {
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
-  // Recebe dados da Home
+  const [displayAddress, setDisplayAddress] = useState(
+    "Carregando endereço...",
+  );
+
   const { occurrenceData } = route.params || {};
 
-  if (!occurrenceData) {  
+  // Validação inicial
+  if (!occurrenceData) {
     return (
       <View style={styles.container}>
         <Text
@@ -49,17 +57,61 @@ export default function OccurrenceDetails() {
   }
 
   const occurrence: Occurrence = occurrenceData;
+  // Fallback para título
   const itemTitle =
-    occurrence.titule || (occurrence as any).title || "Sem Título";
+    (occurrence as any).title || (occurrence as any).titule || "Ocorrência";
 
-  // Coordenadas seguras
-  const hasCoords = occurrence.lat && occurrence.lng && occurrence.lat !== 0;
+  // O backend manda como 'latitude', mas o TS pode ter 'lat'. Usamos 'any' ou checagem dupla para garantir.
+  const rawLat = (occurrence as any).latitude ?? (occurrence as any).lat;
+  const rawLng = (occurrence as any).longitude ?? (occurrence as any).lng;
+
+  const latNum = Number(rawLat);
+  const lngNum = Number(rawLng);
+
+  // Verifica se são números válidos e diferentes de zero
+  const hasCoords =
+    !isNaN(latNum) && !isNaN(lngNum) && latNum !== 0 && lngNum !== 0;
+
   const initialRegion = {
-    latitude: hasCoords ? occurrence.lat! : -8.047,
-    longitude: hasCoords ? occurrence.lng! : -34.877,
-    latitudeDelta: 0.01,
-    longitudeDelta: 0.01,
+    latitude: hasCoords ? latNum : -8.047,
+    longitude: hasCoords ? lngNum : -34.877,
+    latitudeDelta: 0.005,
+    longitudeDelta: 0.005,
   };
+
+  useEffect(() => {
+    async function fetchAddress() {
+      if (hasCoords) {
+        try {
+          const addressResponse = await Location.reverseGeocodeAsync({
+            latitude: latNum,
+            longitude: lngNum,
+          });
+
+          if (addressResponse.length > 0) {
+            const addr = addressResponse[0];
+            const street = addr.street || "Rua não identificada";
+            const number = addr.streetNumber || "S/N";
+            const district = addr.district || "";
+
+            let formatted = `${street}, ${number}`;
+            if (district) formatted += ` - ${district}`;
+
+            setDisplayAddress(formatted);
+          } else {
+            setDisplayAddress("Endereço não encontrado no mapa.");
+          }
+        } catch (error) {
+          console.log("Erro geocoding:", error);
+          setDisplayAddress("Endereço indisponível.");
+        }
+      } else {
+        setDisplayAddress("Localização não registrada.");
+      }
+    }
+
+    fetchAddress();
+  }, [hasCoords, latNum, lngNum]);
 
   return (
     <View style={styles.container}>
@@ -71,7 +123,7 @@ export default function OccurrenceDetails() {
           <Feather name="arrow-left" size={24} color={theme.colors.white} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Detalhes #{occurrence.id}</Text>
-        {/* Botão Editar */}
+
         <TouchableOpacity
           style={styles.backButton}
           onPress={() =>
@@ -87,12 +139,17 @@ export default function OccurrenceDetails() {
 
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.mapContainer}>
-          <MapView style={styles.map} initialRegion={initialRegion}>
+          <MapView
+            style={styles.map}
+            region={initialRegion} // Usar region em vez de initialRegion para forçar atualização se mudar
+            scrollEnabled={false}
+            zoomEnabled={false}
+          >
             {hasCoords && (
               <Marker
                 coordinate={{
-                  latitude: occurrence.lat!,
-                  longitude: occurrence.lng!,
+                  latitude: latNum,
+                  longitude: lngNum,
                 }}
               />
             )}
@@ -103,11 +160,7 @@ export default function OccurrenceDetails() {
               size={16}
               color={theme.colors.primary}
             />
-            <Text style={styles.addressText}>
-              {occurrence.address
-                ? `${occurrence.address.street}, ${occurrence.address.number}`
-                : "Endereço não disponível"}
-            </Text>
+            <Text style={styles.addressText}>{displayAddress}</Text>
           </View>
         </View>
 
@@ -115,7 +168,7 @@ export default function OccurrenceDetails() {
           <Text style={styles.occurrenceTitle}>{itemTitle}</Text>
           <View style={styles.rowBetween}>
             <Text style={styles.occurrenceType}>
-              {occurrence.type?.name || "Tipo N/A"}
+              {occurrence.type?.name || "Tipo não informado"}
             </Text>
             <View style={[styles.statusBadge]}>
               <Text style={styles.statusText}>{occurrence.status}</Text>
@@ -164,6 +217,7 @@ const createStyles = (theme: any) =>
       overflow: "hidden",
       marginBottom: 20,
       backgroundColor: theme.colors.border,
+      position: "relative",
     },
     map: { width: "100%", height: "100%" },
     addressBar: {
@@ -171,16 +225,15 @@ const createStyles = (theme: any) =>
       bottom: 0,
       left: 0,
       right: 0,
-      backgroundColor: theme.colors.card,
+      backgroundColor: "rgba(0,0,0,0.7)", // Fundo escuro transparente para melhor leitura
       padding: 10,
       flexDirection: "row",
       alignItems: "center",
       gap: 6,
-      opacity: 0.9,
     },
     addressText: {
       fontSize: 12 * theme.fontScale,
-      color: theme.colors.text,
+      color: "#FFF", // Texto branco para contraste no mapa
       flex: 1,
     },
     mainCard: {
