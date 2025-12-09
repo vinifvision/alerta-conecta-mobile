@@ -21,7 +21,7 @@ export default function OccurrenceDetails() {
   // Recebe dados da Home
   const { occurrenceData } = route.params || {};
 
-  if (!occurrenceData) {
+  if (!occurrenceData) {  
     return (
       <View style={styles.container}>
         <Text

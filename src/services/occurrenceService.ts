@@ -2,8 +2,8 @@ import { Occurrence } from "../types";
 import { MOCK_OCCURRENCES } from "./mockData";
 
 const API_URL =
-  "https://alerta-conecta-backend-production.up.railway.app/database/occurrence";
-const USE_MOCK = true; // Mantenha TRUE para testar localmente antes de conectar
+  "https://hastily-preaseptic-myrle.ngrok-free.dev/database/occurrence";
+const USE_MOCK = false; // Mantenha TRUE para testar localmente antes de conectar
 
 export const occurrenceService = {
   getAll: async (): Promise<Occurrence[]> => {
@@ -50,9 +50,32 @@ export const occurrenceService = {
   // Update mantido como JSON por enquanto (ou precisaria mudar se o backend exigir)
   update: async (
     id: number,
-    occurrence: Partial<Occurrence>,
+    formData: FormData,
   ): Promise<void> => {
     if (USE_MOCK) return;
-    // Implementação futura...
+
+    
+    const response = await fetch(`${API_URL}/${id}`, {
+      method: "PATCH",
+      // NÃO defina 'Content-Type': 'multipart/form-data' manualmente!
+      // O fetch faz isso automaticamente e adiciona o 'boundary' necessário.
+      body: formData,
+    });
+
+    const responseText = await response.text();
+    if (!response.ok) {
+      throw new Error(responseText || "Falha ao atualizar registro de ocorrência");
+    }
   },
+    async delete(id: number): Promise<void> {
+    const response = await fetch(`${API_URL}/${id}`,{method:"DELETE",headers: {
+        'Content-Type': 'application/json'
+      }});
+    const responseText = await response.text();
+    if (!response.ok) {
+      throw new Error(responseText || "Falha ao deletar ocorrência");
+    }
+    }
+
+
 };

@@ -3,8 +3,8 @@ import { User } from "../types";
 import { MOCK_USER } from "./mockData";
 
 const API_URL =
-  "https://alerta-conecta-backend-production.up.railway.app/database";
-const USE_MOCK = true; // Alterado para FALSE para usar o backend real
+  "https://hastily-preaseptic-myrle.ngrok-free.dev/database/user";
+const USE_MOCK = false; // Alterado para FALSE para usar o backend real
 
 export const authService = {
   login: async (cpf: string, pass: string): Promise<User> => {
@@ -16,7 +16,7 @@ export const authService = {
     }
 
     // Modo Real
-    const response = await fetch(`${API_URL}/user/login`, {
+    const response = await fetch(`${API_URL}/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ cpf, pass }),

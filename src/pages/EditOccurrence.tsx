@@ -40,15 +40,13 @@ export default function EditOccurrence() {
     setLoading(true);
     try {
       // Cria objeto de atualização mantendo ID e outros campos
-      const updatedData: Occurrence = {
-        ...occurrenceData,
-        titule: titulo, // Mantemos 'titule' para compatibilidade
-        victims: envolvidos,
-        details: detalhes,
-        priority: prioridade,
-        status: status,
-      };
+      const updatedData = new FormData();
 
+        updatedData.append("title", titulo); // Mudou de 'titule' para 'title'
+        updatedData.append("victims", envolvidos);
+        updatedData.append("details", detalhes);
+        updatedData.append("status", status);
+        updatedData.append("priority", prioridade);
       await occurrenceService.update(occurrenceData.id, updatedData);
 
       Alert.alert("Sucesso", "Ocorrência atualizada!");
